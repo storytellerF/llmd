@@ -48,3 +48,37 @@ jobs:
       - name: Build frontend
         working-directory: apps/desktop
         run: npm run build
+
+  android-compile:
+    runs-on: ubuntu-latest
+
+    env:
+      ANDROID_API_LEVEL: "36"
+      ANDROID_BUILD_TOOLS: "36.0.0"
+      ANDROID_NDK_VERSION: "28.0.13004108"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: temurin
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build dependencies
+        run: |
+          sdkmanager --install \
+            "platforms;android-${ANDROID_API_LEVEL}" \
+            "build-tools;${ANDROID_BUILD_TOOLS}" \
+            "ndk;${ANDROID_NDK_VERSION}"
+          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}" >> "$GITHUB_ENV"
+          echo "NDK_HOME=${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Compile Android Kotlin and AIDL
+        working-directory: apps/desktop/src-tauri/gen/android
+        run: ./gradlew :app:compileArm64DebugKotlin --no-daemon

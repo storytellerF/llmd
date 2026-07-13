@@ -39,38 +39,42 @@ class LlmdIpcService : Service() {
 
         override fun chatCompletion(requestJson: String): String {
             enforceAllowedCaller()
-            LlmdAndroidBridge.initialize(this@LlmdIpcService)
-            val request = JSONObject(requestJson)
-            val model = request.optString("model", DEFAULT_MODEL)
-            val content = LlmdAndroidBridge.chatCompletion(requestJson)
-            return JSONObject()
-                .put("id", "chatcmpl-android-ipc")
-                .put("object", "chat.completion")
-                .put("created", System.currentTimeMillis() / 1000L)
-                .put("model", model)
-                .put(
-                    "choices",
-                    JSONArray()
-                        .put(
-                            JSONObject()
-                                .put("index", 0)
-                                .put(
-                                    "message",
-                                    JSONObject()
-                                        .put("role", "assistant")
-                                        .put("content", content),
-                                )
-                                .put("finish_reason", "stop"),
-                        ),
-                )
-                .put(
-                    "usage",
-                    JSONObject()
-                        .put("prompt_tokens", 0)
-                        .put("completion_tokens", 0)
-                        .put("total_tokens", 0),
-                )
-                .toString()
+            return runCatching {
+                LlmdAndroidBridge.initialize(this@LlmdIpcService)
+                val request = JSONObject(requestJson)
+                val model = request.optString("model", DEFAULT_MODEL)
+                val content = LlmdAndroidBridge.chatCompletion(requestJson)
+                JSONObject()
+                    .put("id", "chatcmpl-android-ipc")
+                    .put("object", "chat.completion")
+                    .put("created", System.currentTimeMillis() / 1000L)
+                    .put("model", model)
+                    .put(
+                        "choices",
+                        JSONArray()
+                            .put(
+                                JSONObject()
+                                    .put("index", 0)
+                                    .put(
+                                        "message",
+                                        JSONObject()
+                                            .put("role", "assistant")
+                                            .put("content", content),
+                                    )
+                                    .put("finish_reason", "stop"),
+                            ),
+                    )
+                    .put(
+                        "usage",
+                        JSONObject()
+                            .put("prompt_tokens", 0)
+                            .put("completion_tokens", 0)
+                            .put("total_tokens", 0),
+                    )
+                    .toString()
+            }.getOrElse { error ->
+                errorResponse(error)
+            }
         }
     }
 
@@ -82,6 +86,16 @@ class LlmdIpcService : Service() {
             "Caller is not allowed to use llmd IPC"
         }
     }
+
+    private fun errorResponse(error: Throwable): String =
+        JSONObject()
+            .put(
+                "error",
+                JSONObject()
+                    .put("message", error.message ?: error::class.java.simpleName)
+                    .put("type", "llmd_error"),
+            )
+            .toString()
 
     private companion object {
         const val DEFAULT_MODEL = "gemma-4-E2B-it"

@@ -50,7 +50,7 @@
             android:name=".LlmdIpcService"
             android:exported="true">
             <intent-filter>
-                <action android:name="dev.placeholder.llmd.action.BIND_IPC" />
+                <action android:name="com.storyteller_f.llmd.action.BIND_IPC" />
             </intent-filter>
         </service>
     </application>

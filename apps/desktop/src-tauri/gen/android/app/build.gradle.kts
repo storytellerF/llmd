@@ -25,7 +25,7 @@ android {
     namespace = "dev.placeholder.llmd"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "dev.placeholder.llmd"
+        applicationId = "com.storyteller_f.llmd"
         minSdk = 35
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
