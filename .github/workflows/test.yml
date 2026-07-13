@@ -53,9 +53,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      ANDROID_API_LEVEL: "36"
-      ANDROID_BUILD_TOOLS: "36.0.0"
-      ANDROID_NDK_VERSION: "28.0.13004108"
+      ANDROID_NDK_VERSION: "28.2.13676358"
 
     steps:
       - uses: actions/checkout@v4
@@ -67,15 +65,9 @@ jobs:
           distribution: temurin
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android build dependencies
+      - name: Configure preinstalled Android SDK
         run: |
-          sdkmanager --install \
-            "platforms;android-${ANDROID_API_LEVEL}" \
-            "build-tools;${ANDROID_BUILD_TOOLS}" \
-            "ndk;${ANDROID_NDK_VERSION}"
+          test -d "${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}"
           echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}" >> "$GITHUB_ENV"
           echo "NDK_HOME=${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}" >> "$GITHUB_ENV"
 
