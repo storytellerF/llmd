@@ -1,0 +1,26 @@
+[package]
+name = "llmd-desktop"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/placeholder/llmd"
+rust-version = "1.78"
+
+[lib]
+name = "llmd_desktop"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+llmd-core = { path = "../../../crates/llmd-core" }
+llmd-rlitert = { path = "../../../crates/llmd-rlitert" }
+llmd-server = { path = "../../../crates/llmd-server" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri = { version = "2", features = [] }
+tokio = { version = "1.42", features = ["full"] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
