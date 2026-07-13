@@ -10,7 +10,6 @@ on:
       - "*"
 
 env:
-  ANDROID_NDK_VERSION: "28.2.13676358"
   ANDROID_TARGET: "aarch64"
 
 jobs:
@@ -51,9 +50,10 @@ jobs:
 
       - name: Configure preinstalled Android SDK
         run: |
-          test -d "${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}"
-          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}" >> "$GITHUB_ENV"
-          echo "NDK_HOME=${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}" >> "$GITHUB_ENV"
+          test -d "${ANDROID_HOME}"
+          test -d "${ANDROID_SDK_ROOT}"
+          test -d "${ANDROID_NDK_HOME}"
+          echo "NDK_HOME=${ANDROID_NDK_HOME}" >> "$GITHUB_ENV"
 
       - name: Install frontend dependencies
         working-directory: apps/desktop
