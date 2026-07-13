@@ -45,5 +45,13 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="local_llm_openai_api" />
         </service>
+
+        <service
+            android:name=".LlmdIpcService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="dev.placeholder.llmd.action.BIND_IPC" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>
