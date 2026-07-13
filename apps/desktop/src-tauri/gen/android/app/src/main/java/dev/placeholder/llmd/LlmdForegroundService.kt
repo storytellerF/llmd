@@ -11,7 +11,7 @@ import android.os.Build
 import android.os.IBinder
 
 class LlmdForegroundService : Service() {
-    private var llmdServer: LlmdAndroidServer? = null
+    private var serverStarted = false
 
     override fun onCreate() {
         super.onCreate()
@@ -40,8 +40,9 @@ class LlmdForegroundService : Service() {
     }
 
     private fun startServer() {
-        if (llmdServer == null) {
-            llmdServer = LlmdAndroidServer(this).also { it.start() }
+        if (!serverStarted) {
+            LlmdAndroidBridge.initialize(this)
+            serverStarted = LlmdNativeServer.startServer()
         }
 
         val notification = buildNotification()
@@ -57,8 +58,11 @@ class LlmdForegroundService : Service() {
     }
 
     private fun stopServer() {
-        llmdServer?.stop()
-        llmdServer = null
+        if (serverStarted) {
+            LlmdNativeServer.stopServer()
+            serverStarted = false
+        }
+        LlmdAndroidBridge.close()
     }
 
     private fun createNotificationChannel() {

@@ -167,10 +167,21 @@ pub fn create_router(provider: Arc<dyn ModelProvider>) -> Router {
 }
 
 pub async fn serve(provider: Arc<dyn ModelProvider>, host: &str, port: u16) -> anyhow::Result<()> {
+    serve_with_shutdown(provider, host, port, std::future::pending::<()>()).await
+}
+
+pub async fn serve_with_shutdown(
+    provider: Arc<dyn ModelProvider>,
+    host: &str,
+    port: u16,
+    shutdown: impl std::future::Future<Output = ()> + Send + 'static,
+) -> anyhow::Result<()> {
     let app = create_router(provider);
     let listener = tokio::net::TcpListener::bind(format!("{host}:{port}")).await?;
     tracing::info!("llmd listening on http://{host}:{port}");
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown)
+        .await?;
     Ok(())
 }
 

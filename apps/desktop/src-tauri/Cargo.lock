@@ -2083,6 +2083,9 @@ dependencies = [
 name = "llmd-desktop"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "futures-util",
+ "jni",
  "llmd-core",
  "llmd-rlitert",
  "llmd-server",
