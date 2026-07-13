@@ -88,6 +88,12 @@ android {
         aidl = true
         buildConfig = true
     }
+    sourceSets {
+        getByName("main") {
+            java.srcDir("../../android/llmd-ipc/src/main/java")
+            aidl.srcDir("../../android/llmd-ipc/src/main/aidl")
+        }
+    }
 }
 
 rust {

@@ -81,4 +81,6 @@ jobs:
 
       - name: Compile Android Kotlin and AIDL
         working-directory: apps/desktop/src-tauri/gen/android
-        run: ./gradlew :app:compileArm64DebugKotlin --no-daemon
+        run: |
+          ../../../../../scripts/sync-tauri-android-overrides.sh
+          ./gradlew :app:compileArm64DebugKotlin --no-daemon
