@@ -1,16 +1,17 @@
 package dev.placeholder.llmd
 
 import android.content.Context
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
-import kotlinx.coroutines.runBlocking
 
 object LlmdAndroidBridge {
+    private val providerMutex = Mutex()
     private var provider: AndroidLiteRtProvider? = null
     private var selectedModelPath = DEFAULT_MODEL_PATH
 
-    @Synchronized
-    fun initialize(context: Context) {
+    suspend fun initialize(context: Context) = providerMutex.withLock {
         if (provider == null) {
             provider = AndroidLiteRtProvider(context.applicationContext.cacheDir.absolutePath) {
                 android.util.Log.i("llmd", it)
@@ -18,14 +19,12 @@ object LlmdAndroidBridge {
         }
     }
 
-    @Synchronized
-    fun close() {
+    suspend fun close() = providerMutex.withLock {
         provider?.close()
         provider = null
     }
 
-    @Synchronized
-    fun chatCompletion(requestJson: String): String {
+    suspend fun chatCompletion(requestJson: String): String = providerMutex.withLock {
         val request = JSONObject(requestJson)
         val model = request.optString("model", DEFAULT_MODEL)
         require(model == DEFAULT_MODEL) { "Unsupported model: $model" }
@@ -38,14 +37,12 @@ object LlmdAndroidBridge {
         }
         val activeProvider = requireNotNull(provider) { "Android LiteRT bridge is not initialized" }
 
-        return runBlocking {
-            activeProvider.generate(
-                modelPath = selectedModelPath,
-                systemPrompt = systemPrompt,
-                messages = messages,
-                temperature = temperature,
-            )
-        }
+        activeProvider.generate(
+            modelPath = selectedModelPath,
+            systemPrompt = systemPrompt,
+            messages = messages,
+            temperature = temperature,
+        )
     }
 
     private fun parseMessages(array: JSONArray): List<LlmdChatMessage> =

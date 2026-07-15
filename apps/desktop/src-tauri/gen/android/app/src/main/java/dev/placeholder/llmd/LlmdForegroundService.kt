@@ -9,8 +9,14 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class LlmdForegroundService : Service() {
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var serverStarted = false
 
     override fun onCreate() {
@@ -21,12 +27,14 @@ class LlmdForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action ?: ACTION_START) {
             ACTION_STOP -> {
-                stopServer()
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                serviceScope.launch {
+                    stopServer()
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
                 return START_NOT_STICKY
             }
-            else -> startServer()
+            else -> serviceScope.launch { startServer() }
         }
 
         return START_STICKY
@@ -35,11 +43,14 @@ class LlmdForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        stopServer()
+        serviceScope.launch {
+            stopServer()
+            serviceScope.cancel()
+        }
         super.onDestroy()
     }
 
-    private fun startServer() {
+    private suspend fun startServer() {
         if (!serverStarted) {
             LlmdAndroidBridge.initialize(this)
             serverStarted = LlmdNativeServer.startServer()
@@ -57,7 +68,7 @@ class LlmdForegroundService : Service() {
         }
     }
 
-    private fun stopServer() {
+    private suspend fun stopServer() {
         if (serverStarted) {
             LlmdNativeServer.stopServer()
             serverStarted = false

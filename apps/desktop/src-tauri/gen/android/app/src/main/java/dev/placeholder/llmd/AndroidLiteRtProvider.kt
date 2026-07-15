@@ -12,29 +12,34 @@ import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.SamplerConfig
 import java.io.File
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class AndroidLiteRtProvider(
     private val cacheDir: String,
     private val log: (String) -> Unit,
 ) {
+    private val engineMutex = Mutex()
     private var loadedModelPath: String? = null
     private var engine: Engine? = null
 
-    @Synchronized
-    fun close() {
+    suspend fun close() = engineMutex.withLock {
+        closeLocked()
+    }
+
+    private fun closeLocked() {
         engine?.close()
         engine = null
         loadedModelPath = null
     }
 
-    @Synchronized
-    fun initialize(modelPath: String, backend: String = "cpu") {
+    private fun initializeLocked(modelPath: String, backend: String = "cpu") {
         val file = File(modelPath)
         require(file.exists()) { "Model file does not exist: $modelPath" }
         require(file.length() > 0L) { "Model file is empty: $modelPath" }
         if (loadedModelPath == file.absolutePath && engine?.isInitialized() == true) return
 
-        close()
+        closeLocked()
         val selectedBackend = when (backend.lowercase()) {
             "gpu" -> Backend.GPU()
             else -> Backend.CPU()
@@ -60,8 +65,8 @@ class AndroidLiteRtProvider(
         systemPrompt: String,
         messages: List<LlmdChatMessage>,
         temperature: Double,
-    ): String {
-        initialize(modelPath)
+    ): String = engineMutex.withLock {
+        initializeLocked(modelPath)
         val activeEngine = requireNotNull(engine) { "LiteRT-LM engine is not initialized" }
         val lastUserMessage = messages.lastOrNull { it.role == "user" }?.content
             ?: error("No user message to send")
@@ -90,7 +95,7 @@ class AndroidLiteRtProvider(
             }
         }
 
-        return result.toString().trim()
+        result.toString().trim()
     }
 
     private fun LlmdChatMessage.toLiteRtMessage(): Message? = when (role) {
