@@ -18,44 +18,19 @@ class LlmdIpcService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val binder = object : ILlmdService.Stub() {
-        override fun health(): String {
+        override fun healthAsync(callback: ILlmdChatCallback) {
             enforceAllowedCaller()
-            return JSONObject()
-                .put("status", "ok")
-                .put("provider", PROVIDER)
-                .put("model", DEFAULT_MODEL)
-                .toString()
+            respond(callback) { buildHealthResponse() }
         }
 
-        override fun listModels(): String {
+        override fun listModelsAsync(callback: ILlmdChatCallback) {
             enforceAllowedCaller()
-            return JSONObject()
-                .put("object", "list")
-                .put(
-                    "data",
-                    JSONArray()
-                        .put(
-                            JSONObject()
-                                .put("id", DEFAULT_MODEL)
-                                .put("object", "model")
-                                .put("created", 0)
-                                .put("owned_by", PROVIDER),
-                        ),
-                )
-                .toString()
-        }
-
-        override fun chatCompletion(requestJson: String): String {
-            enforceAllowedCaller()
-            return buildChatCompletionResponse(requestJson)
+            respond(callback) { buildListModelsResponse() }
         }
 
         override fun chatCompletionAsync(requestJson: String, callback: ILlmdChatCallback) {
             enforceAllowedCaller()
-            serviceScope.launch {
-                val response = buildChatCompletionResponse(requestJson)
-                runCatching { callback.onComplete(response) }
-            }
+            respond(callback) { buildChatCompletionResponse(requestJson) }
         }
     }
 
@@ -65,6 +40,36 @@ class LlmdIpcService : Service() {
         serviceScope.cancel()
         super.onDestroy()
     }
+
+    private fun respond(callback: ILlmdChatCallback, buildResponse: () -> String) {
+        serviceScope.launch {
+            val response = buildResponse()
+            runCatching { callback.onComplete(response) }
+        }
+    }
+
+    private fun buildHealthResponse(): String =
+        JSONObject()
+            .put("status", "ok")
+            .put("provider", PROVIDER)
+            .put("model", DEFAULT_MODEL)
+            .toString()
+
+    private fun buildListModelsResponse(): String =
+        JSONObject()
+            .put("object", "list")
+            .put(
+                "data",
+                JSONArray()
+                    .put(
+                        JSONObject()
+                            .put("id", DEFAULT_MODEL)
+                            .put("object", "model")
+                            .put("created", 0)
+                            .put("owned_by", PROVIDER),
+                    ),
+            )
+            .toString()
 
     private fun buildChatCompletionResponse(requestJson: String): String =
         runCatching {
