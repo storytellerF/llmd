@@ -1,6 +1,7 @@
 package dev.placeholder.llmd
 
 import android.content.Context
+import java.io.File
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
@@ -24,10 +25,20 @@ object LlmdAndroidBridge {
         provider = null
     }
 
+    suspend fun listModels(): List<String> = providerMutex.withLock {
+        when {
+            File(selectedModelPath).isUsableModelFile() -> listOf(DEFAULT_MODEL)
+            else -> emptyList()
+        }
+    }
+
     suspend fun chatCompletion(requestJson: String): String = providerMutex.withLock {
         val request = JSONObject(requestJson)
         val model = request.optString("model", DEFAULT_MODEL)
         require(model == DEFAULT_MODEL) { "Unsupported model: $model" }
+        require(File(selectedModelPath).isUsableModelFile()) {
+            "Model file does not exist: $selectedModelPath"
+        }
 
         val messages = parseMessages(request.getJSONArray("messages"))
         val systemPrompt = messages.firstOrNull { it.role == "system" }?.content ?: ""
@@ -53,6 +64,8 @@ object LlmdAndroidBridge {
                 content = item.getString("content"),
             )
         }
+
+    private fun File.isUsableModelFile(): Boolean = exists() && isFile && length() > 0L
 
     private const val DEFAULT_MODEL = "gemma-4-E2B-it"
     private const val DEFAULT_MODEL_PATH = "/data/local/tmp/llmd/gemma-4-E2B-it.litertlm"

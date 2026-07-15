@@ -60,18 +60,20 @@ class LlmdIpcService : Service() {
 
     private suspend fun buildListModelsResponse(): String =
         withContext(Dispatchers.Default) {
+            val models = LlmdAndroidBridge.listModels()
             JSONObject()
                 .put("object", "list")
                 .put(
                     "data",
-                    JSONArray()
-                        .put(
+                    JSONArray(
+                        models.map { model ->
                             JSONObject()
-                                .put("id", DEFAULT_MODEL)
+                                .put("id", model)
                                 .put("object", "model")
                                 .put("created", 0)
-                                .put("owned_by", PROVIDER),
-                        ),
+                                .put("owned_by", PROVIDER)
+                        },
+                    ),
                 )
                 .toString()
         }

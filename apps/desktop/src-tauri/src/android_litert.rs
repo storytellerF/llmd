@@ -9,12 +9,14 @@ use llmd_core::{
     DEFAULT_MODEL, DEFAULT_PORT,
 };
 use std::{
+    path::Path,
     sync::{Mutex, OnceLock},
     thread::JoinHandle,
 };
 use tokio::sync::oneshot;
 
 pub const PROVIDER_NAME: &str = super::ANDROID_PROVIDER_NAME;
+const DEFAULT_MODEL_PATH: &str = "/data/local/tmp/llmd/gemma-4-E2B-it.litertlm";
 
 static JAVA_VM: OnceLock<JavaVM> = OnceLock::new();
 static BRIDGE_INSTANCE: OnceLock<GlobalRef> = OnceLock::new();
@@ -30,14 +32,21 @@ pub struct AndroidLiteRtProvider;
 #[async_trait]
 impl ModelProvider for AndroidLiteRtProvider {
     async fn list_models(&self) -> Result<Vec<ModelInfo>, LlmdError> {
-        Ok(vec![ModelInfo {
-            id: DEFAULT_MODEL.to_string(),
-            owned_by: PROVIDER_NAME.to_string(),
-        }])
+        if is_usable_model_file(DEFAULT_MODEL_PATH) {
+            Ok(vec![ModelInfo {
+                id: DEFAULT_MODEL.to_string(),
+                owned_by: PROVIDER_NAME.to_string(),
+            }])
+        } else {
+            Ok(Vec::new())
+        }
     }
 
     async fn chat(&self, request: ChatRequest) -> Result<ChatResponse, LlmdError> {
         if request.model != DEFAULT_MODEL {
+            return Err(LlmdError::ModelNotFound(request.model));
+        }
+        if !is_usable_model_file(DEFAULT_MODEL_PATH) {
             return Err(LlmdError::ModelNotFound(request.model));
         }
 
@@ -60,6 +69,13 @@ impl ModelProvider for AndroidLiteRtProvider {
             Ok(response.content)
         })))
     }
+}
+
+fn is_usable_model_file(path: &str) -> bool {
+    Path::new(path)
+        .metadata()
+        .map(|metadata| metadata.is_file() && metadata.len() > 0)
+        .unwrap_or(false)
 }
 
 fn call_bridge_string(method: &str, argument: String) -> Result<String, LlmdError> {
