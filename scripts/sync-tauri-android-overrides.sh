@@ -23,7 +23,9 @@ if ! grep -Fq 'aidl = true' "${BUILD_FILE}"; then
 fi
 
 if ! grep -Fq 'android/llmd-ipc/src/main/java' "${BUILD_FILE}"; then
-  perl -0pi -e 's/(\n\s*buildFeatures \{\n(?:.|\n)*?\n\s*\}\n)/$1    sourceSets {\n        getByName("main") {\n            java.srcDir("..\/..\/android\/llmd-ipc\/src\/main\/java")\n            aidl.srcDir("..\/..\/android\/llmd-ipc\/src\/main\/aidl")\n        }\n    }\n/s' "${BUILD_FILE}"
+  perl -0pi -e 's/(\n\s*buildFeatures \{\n(?:.|\n)*?\n\s*\}\n)/$1    sourceSets {\n        getByName("main") {\n            java.srcDir("..\/..\/..\/android\/llmd-ipc\/src\/main\/java")\n            aidl.srcDir("..\/..\/..\/android\/llmd-ipc\/src\/main\/aidl")\n        }\n    }\n/s' "${BUILD_FILE}"
+else
+  perl -0pi -e 's#"\.\./\.\./android/llmd-ipc/#"../../../android/llmd-ipc/#g' "${BUILD_FILE}"
 fi
 
 if ! grep -Fq 'com.storyteller_f.llmd' "${BUILD_FILE}"; then
