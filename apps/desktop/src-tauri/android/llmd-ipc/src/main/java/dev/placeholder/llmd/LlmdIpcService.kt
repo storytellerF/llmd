@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -41,72 +42,78 @@ class LlmdIpcService : Service() {
         super.onDestroy()
     }
 
-    private fun respond(callback: ILlmdChatCallback, buildResponse: () -> String) {
+    private fun respond(callback: ILlmdChatCallback, buildResponse: suspend () -> String) {
         serviceScope.launch {
             val response = buildResponse()
             runCatching { callback.onComplete(response) }
         }
     }
 
-    private fun buildHealthResponse(): String =
-        JSONObject()
-            .put("status", "ok")
-            .put("provider", PROVIDER)
-            .put("model", DEFAULT_MODEL)
-            .toString()
-
-    private fun buildListModelsResponse(): String =
-        JSONObject()
-            .put("object", "list")
-            .put(
-                "data",
-                JSONArray()
-                    .put(
-                        JSONObject()
-                            .put("id", DEFAULT_MODEL)
-                            .put("object", "model")
-                            .put("created", 0)
-                            .put("owned_by", PROVIDER),
-                    ),
-            )
-            .toString()
-
-    private fun buildChatCompletionResponse(requestJson: String): String =
-        runCatching {
-            LlmdAndroidBridge.initialize(this@LlmdIpcService)
-            val request = JSONObject(requestJson)
-            val model = request.optString("model", DEFAULT_MODEL)
-            val content = LlmdAndroidBridge.chatCompletion(requestJson)
+    private suspend fun buildHealthResponse(): String =
+        withContext(Dispatchers.Default) {
             JSONObject()
-                .put("id", "chatcmpl-android-ipc")
-                .put("object", "chat.completion")
-                .put("created", System.currentTimeMillis() / 1000L)
-                .put("model", model)
+                .put("status", "ok")
+                .put("provider", PROVIDER)
+                .put("model", DEFAULT_MODEL)
+                .toString()
+        }
+
+    private suspend fun buildListModelsResponse(): String =
+        withContext(Dispatchers.Default) {
+            JSONObject()
+                .put("object", "list")
                 .put(
-                    "choices",
+                    "data",
                     JSONArray()
                         .put(
                             JSONObject()
-                                .put("index", 0)
-                                .put(
-                                    "message",
-                                    JSONObject()
-                                        .put("role", "assistant")
-                                        .put("content", content),
-                                )
-                                .put("finish_reason", "stop"),
+                                .put("id", DEFAULT_MODEL)
+                                .put("object", "model")
+                                .put("created", 0)
+                                .put("owned_by", PROVIDER),
                         ),
                 )
-                .put(
-                    "usage",
-                    JSONObject()
-                        .put("prompt_tokens", 0)
-                        .put("completion_tokens", 0)
-                        .put("total_tokens", 0),
-                )
                 .toString()
-        }.getOrElse { error ->
-            errorResponse(error)
+        }
+
+    private suspend fun buildChatCompletionResponse(requestJson: String): String =
+        withContext(Dispatchers.Default) {
+            runCatching {
+                LlmdAndroidBridge.initialize(this@LlmdIpcService)
+                val request = JSONObject(requestJson)
+                val model = request.optString("model", DEFAULT_MODEL)
+                val content = LlmdAndroidBridge.chatCompletion(requestJson)
+                JSONObject()
+                    .put("id", "chatcmpl-android-ipc")
+                    .put("object", "chat.completion")
+                    .put("created", System.currentTimeMillis() / 1000L)
+                    .put("model", model)
+                    .put(
+                        "choices",
+                        JSONArray()
+                            .put(
+                                JSONObject()
+                                    .put("index", 0)
+                                    .put(
+                                        "message",
+                                        JSONObject()
+                                            .put("role", "assistant")
+                                            .put("content", content),
+                                    )
+                                    .put("finish_reason", "stop"),
+                            ),
+                    )
+                    .put(
+                        "usage",
+                        JSONObject()
+                            .put("prompt_tokens", 0)
+                            .put("completion_tokens", 0)
+                            .put("total_tokens", 0),
+                    )
+                    .toString()
+            }.getOrElse { error ->
+                errorResponse(error)
+            }
         }
 
     private fun enforceAllowedCaller() {
