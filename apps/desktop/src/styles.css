@@ -44,6 +44,23 @@ p {
   color: #475569;
 }
 
+.actions,
+.panel-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-heading {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.panel-heading h2 {
+  margin: 0;
+}
+
 dl {
   display: grid;
   gap: 12px;
@@ -74,6 +91,34 @@ button {
   cursor: pointer;
   font: inherit;
   padding: 10px 14px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+#model-status {
+  margin-bottom: 12px;
+}
+
+#model-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#model-list li {
+  border: 1px solid #d5dbd8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+}
+
+#model-list .empty {
+  color: #64748b;
 }
 
 pre {

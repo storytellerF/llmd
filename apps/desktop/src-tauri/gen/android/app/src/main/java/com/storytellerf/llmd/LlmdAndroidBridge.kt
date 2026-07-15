@@ -14,10 +14,18 @@ import org.json.JSONObject
 object LlmdAndroidBridge {
     private val bridgeScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val providerMutex = Mutex()
+    private var appContext: Context? = null
     private var provider: AndroidLiteRtProvider? = null
-    private var selectedModelPath = DEFAULT_MODEL_PATH
+    private var selectedModelPath = ""
+
+    fun configure(context: Context) {
+        val applicationContext = context.applicationContext
+        appContext = applicationContext
+        selectedModelPath = defaultModelFile(applicationContext).absolutePath
+    }
 
     suspend fun initialize(context: Context) = providerMutex.withLock {
+        configure(context)
         if (provider == null) {
             provider = AndroidLiteRtProvider(context.applicationContext.cacheDir.absolutePath) {
                 android.util.Log.i("llmd", it)
@@ -30,12 +38,26 @@ object LlmdAndroidBridge {
         provider = null
     }
 
-    suspend fun listModels(): List<String> = providerMutex.withLock {
+    suspend fun listModels(): List<String> = providerMutex.withLock { listModelsSync() }
+
+    fun listModelsJson(): String = JSONArray(listModelsSync()).toString()
+
+    fun modelStateJson(): String {
+        val path = selectedModelPath.ifBlank {
+            appContext?.let { defaultModelFile(it).absolutePath }.orEmpty()
+        }
+        return JSONObject()
+            .put("defaultModel", DEFAULT_MODEL)
+            .put("modelPath", path)
+            .put("models", JSONArray(listModelsSync()))
+            .toString()
+    }
+
+    private fun listModelsSync(): List<String> =
         when {
             File(selectedModelPath).isUsableModelFile() -> listOf(DEFAULT_MODEL)
             else -> emptyList()
         }
-    }
 
     fun chatCompletionAsync(requestId: Long, requestJson: String) {
         bridgeScope.launch {
@@ -83,6 +105,10 @@ object LlmdAndroidBridge {
 
     private fun File.isUsableModelFile(): Boolean = exists() && isFile && length() > 0L
 
+    fun defaultModelFile(context: Context): File =
+        File(File(context.applicationContext.filesDir, MODEL_DIR), DEFAULT_MODEL_FILE_NAME)
+
     private const val DEFAULT_MODEL = "gemma-4-E2B-it"
-    private const val DEFAULT_MODEL_PATH = "/data/local/tmp/llmd/gemma-4-E2B-it.litertlm"
+    private const val DEFAULT_MODEL_FILE_NAME = "$DEFAULT_MODEL.litertlm"
+    private const val MODEL_DIR = "models"
 }

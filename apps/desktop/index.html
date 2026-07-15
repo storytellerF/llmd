@@ -10,7 +10,10 @@
       <section class="toolbar">
         <h1>llmd</h1>
         <p>Local OpenAI-compatible LiteRT-LM host</p>
-        <button id="health" type="button">Check health</button>
+        <div class="actions">
+          <button id="health" type="button">Check health</button>
+          <button id="refresh-models" type="button">Refresh models</button>
+        </div>
       </section>
 
       <section class="panel">
@@ -29,6 +32,15 @@
             <dd><span id="model-path"></span></dd>
           </div>
         </dl>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>Models</h2>
+          <button id="import-model" type="button">Import model</button>
+        </div>
+        <p id="model-status"></p>
+        <ul id="model-list"></ul>
       </section>
 
       <section class="panel">

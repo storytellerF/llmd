@@ -10,7 +10,6 @@ use llmd_core::{
 };
 use std::{
     collections::HashMap,
-    path::Path,
     sync::{
         atomic::{AtomicI64, Ordering},
         Mutex, OnceLock,
@@ -20,7 +19,6 @@ use std::{
 use tokio::sync::oneshot;
 
 pub const PROVIDER_NAME: &str = super::ANDROID_PROVIDER_NAME;
-const DEFAULT_MODEL_PATH: &str = "/data/local/tmp/llmd/gemma-4-E2B-it.litertlm";
 
 static JAVA_VM: OnceLock<JavaVM> = OnceLock::new();
 static BRIDGE_INSTANCE: OnceLock<GlobalRef> = OnceLock::new();
@@ -41,30 +39,29 @@ pub struct AndroidLiteRtProvider;
 #[async_trait]
 impl ModelProvider for AndroidLiteRtProvider {
     async fn list_models(&self) -> Result<Vec<ModelInfo>, LlmdError> {
-        if is_usable_model_file(DEFAULT_MODEL_PATH) {
-            Ok(vec![ModelInfo {
-                id: DEFAULT_MODEL.to_string(),
-                owned_by: PROVIDER_NAME.to_string(),
-            }])
-        } else {
-            Ok(Vec::new())
-        }
+        call_bridge_list_models().map(|models| {
+            models
+                .into_iter()
+                .map(|id| ModelInfo {
+                    id,
+                    owned_by: PROVIDER_NAME.to_string(),
+                })
+                .collect()
+        })
     }
 
     async fn chat(&self, request: ChatRequest) -> Result<ChatResponse, LlmdError> {
         if request.model != DEFAULT_MODEL {
             return Err(LlmdError::ModelNotFound(request.model));
         }
-        if !is_usable_model_file(DEFAULT_MODEL_PATH) {
-            return Err(LlmdError::ModelNotFound(request.model));
-        }
 
+        let response_model = request.model.clone();
         let request_json = serde_json::to_string(&request)
             .map_err(|error| LlmdError::Backend(error.to_string()))?;
         let content = call_bridge_chat_completion(request_json).await?;
 
         Ok(ChatResponse {
-            model: DEFAULT_MODEL.to_string(),
+            model: response_model,
             content,
         })
     }
@@ -77,11 +74,30 @@ impl ModelProvider for AndroidLiteRtProvider {
     }
 }
 
-fn is_usable_model_file(path: &str) -> bool {
-    Path::new(path)
-        .metadata()
-        .map(|metadata| metadata.is_file() && metadata.len() > 0)
-        .unwrap_or(false)
+fn call_bridge_list_models() -> Result<Vec<String>, LlmdError> {
+    let json = call_bridge_string("listModelsJson")?;
+    serde_json::from_str(&json).map_err(|error| LlmdError::Backend(error.to_string()))
+}
+
+fn call_bridge_string(method: &str) -> Result<String, LlmdError> {
+    let vm = JAVA_VM
+        .get()
+        .ok_or_else(|| LlmdError::Backend("Android JavaVM is not initialized".to_string()))?;
+    let bridge = BRIDGE_INSTANCE.get().ok_or_else(|| {
+        LlmdError::Backend("Android LiteRT bridge is not initialized".to_string())
+    })?;
+
+    let mut env = vm
+        .attach_current_thread()
+        .map_err(|error| LlmdError::Backend(error.to_string()))?;
+    let value = env
+        .call_method(bridge.as_obj(), method, "()Ljava/lang/String;", &[])
+        .and_then(|value| value.l())
+        .map_err(|error| LlmdError::Backend(error.to_string()))?;
+    let value = JString::from(value);
+    env.get_string(&value)
+        .map(|value| value.into())
+        .map_err(|error| LlmdError::Backend(error.to_string()))
 }
 
 async fn call_bridge_chat_completion(request_json: String) -> Result<String, LlmdError> {
