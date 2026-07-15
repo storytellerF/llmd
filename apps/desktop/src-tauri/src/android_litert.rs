@@ -141,13 +141,13 @@ fn cache_android_handles(env: &mut JNIEnv<'_>) -> Result<(), String> {
 
     if BRIDGE_INSTANCE.get().is_none() {
         let class = env
-            .find_class("dev/placeholder/llmd/LlmdAndroidBridge")
+            .find_class("com/storytellerf/llmd/LlmdAndroidBridge")
             .map_err(|error| error.to_string())?;
         let instance = env
             .get_static_field(
                 class,
                 "INSTANCE",
-                "Ldev/placeholder/llmd/LlmdAndroidBridge;",
+                "Lcom/storytellerf/llmd/LlmdAndroidBridge;",
             )
             .and_then(|value| value.l())
             .map_err(|error| error.to_string())?;
@@ -221,7 +221,7 @@ fn stop_server_inner() -> Result<(), String> {
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_dev_placeholder_llmd_LlmdNativeServer_startServer(
+pub unsafe extern "system" fn Java_com_storytellerf_llmd_LlmdNativeServer_startServer(
     mut env: JNIEnv<'_>,
     _this: JObject<'_>,
 ) -> jboolean {
@@ -235,7 +235,7 @@ pub unsafe extern "system" fn Java_dev_placeholder_llmd_LlmdNativeServer_startSe
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_dev_placeholder_llmd_LlmdNativeServer_stopServer(
+pub unsafe extern "system" fn Java_com_storytellerf_llmd_LlmdNativeServer_stopServer(
     _env: JNIEnv<'_>,
     _this: JObject<'_>,
 ) {
@@ -245,7 +245,7 @@ pub unsafe extern "system" fn Java_dev_placeholder_llmd_LlmdNativeServer_stopSer
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_dev_placeholder_llmd_LlmdNativeServer_completeChatCompletion(
+pub unsafe extern "system" fn Java_com_storytellerf_llmd_LlmdNativeServer_completeChatCompletion(
     mut env: JNIEnv<'_>,
     _this: JObject<'_>,
     request_id: jlong,

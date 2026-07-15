@@ -1,6 +1,6 @@
-package dev.placeholder.llmd.ipc;
+package com.storytellerf.llmd.ipc;
 
-import dev.placeholder.llmd.ipc.ILlmdChatCallback;
+import com.storytellerf.llmd.ipc.ILlmdChatCallback;
 
 interface ILlmdService {
     void healthAsync(ILlmdChatCallback callback);

@@ -1,4 +1,4 @@
-package dev.placeholder.llmd
+package com.storytellerf.llmd
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -109,8 +109,8 @@ class LlmdForegroundService : Service() {
     }
 
     companion object {
-        const val ACTION_START = "com.storyteller_f.llmd.action.START_API"
-        const val ACTION_STOP = "com.storyteller_f.llmd.action.STOP_API"
+        const val ACTION_START = "com.storytellerf.llmd.action.START_API"
+        const val ACTION_STOP = "com.storytellerf.llmd.action.STOP_API"
         private const val CHANNEL_ID = "llmd_api"
         private const val NOTIFICATION_ID = 11435
     }

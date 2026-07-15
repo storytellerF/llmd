@@ -28,16 +28,20 @@ else
   perl -0pi -e 's#"\.\./\.\./android/llmd-ipc/#"../../../android/llmd-ipc/#g' "${BUILD_FILE}"
 fi
 
-if ! grep -Fq 'com.storyteller_f.llmd' "${BUILD_FILE}"; then
-  perl -0pi -e 's/applicationId = "dev\.placeholder\.llmd"/applicationId = "com.storyteller_f.llmd"/' "${BUILD_FILE}"
+if ! grep -Fq 'namespace = "com.storytellerf.llmd"' "${BUILD_FILE}"; then
+  perl -0pi -e 's/namespace = "[^"]+"/namespace = "com.storytellerf.llmd"/' "${BUILD_FILE}"
+fi
+
+if ! grep -Fq 'applicationId = "com.storytellerf.llmd"' "${BUILD_FILE}"; then
+  perl -0pi -e 's/applicationId = "[^"]+"/applicationId = "com.storytellerf.llmd"/' "${BUILD_FILE}"
 fi
 
 if ! grep -Fq 'LlmdIpcService' "${MANIFEST_FILE}"; then
-  perl -0pi -e 's#(\n\s*</application>)#\n\n        <service\n            android:name=".LlmdIpcService"\n            android:exported="true">\n            <intent-filter>\n                <action android:name="com.storyteller_f.llmd.action.BIND_IPC" />\n            </intent-filter>\n        </service>$1#' "${MANIFEST_FILE}"
+  perl -0pi -e 's#(\n\s*</application>)#\n\n        <service\n            android:name=".LlmdIpcService"\n            android:exported="true">\n            <intent-filter>\n                <action android:name="com.storytellerf.llmd.action.BIND_IPC" />\n            </intent-filter>\n        </service>$1#' "${MANIFEST_FILE}"
 fi
 
-if grep -Fq 'dev.placeholder.llmd.action.BIND_IPC' "${MANIFEST_FILE}"; then
-  perl -0pi -e 's/dev\.placeholder\.llmd\.action\.BIND_IPC/com.storyteller_f.llmd.action.BIND_IPC/g' "${MANIFEST_FILE}"
+if ! grep -Fq 'com.storytellerf.llmd.action.BIND_IPC' "${MANIFEST_FILE}"; then
+  perl -0pi -e 's/[-_A-Za-z0-9.]+\.action\.BIND_IPC/com.storytellerf.llmd.action.BIND_IPC/g' "${MANIFEST_FILE}"
 fi
 
 echo "Synced Tauri Android llmd overrides."

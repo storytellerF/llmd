@@ -1,4 +1,4 @@
-package dev.placeholder.llmd
+package com.storytellerf.llmd
 
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content

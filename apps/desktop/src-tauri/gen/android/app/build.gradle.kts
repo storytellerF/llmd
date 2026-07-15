@@ -22,10 +22,10 @@ val tauriProperties = Properties().apply {
 
 android {
     compileSdk = 36
-    namespace = "dev.placeholder.llmd"
+    namespace = "com.storytellerf.llmd"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "com.storyteller_f.llmd"
+        applicationId = "com.storytellerf.llmd"
         minSdk = 35
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()

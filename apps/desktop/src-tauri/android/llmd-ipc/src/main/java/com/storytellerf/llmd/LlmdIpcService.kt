@@ -1,11 +1,11 @@
-package dev.placeholder.llmd
+package com.storytellerf.llmd
 
 import android.app.Service
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
-import dev.placeholder.llmd.ipc.ILlmdChatCallback
-import dev.placeholder.llmd.ipc.ILlmdService
+import com.storytellerf.llmd.ipc.ILlmdChatCallback
+import com.storytellerf.llmd.ipc.ILlmdService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

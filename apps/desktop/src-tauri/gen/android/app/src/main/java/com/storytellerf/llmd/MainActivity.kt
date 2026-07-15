@@ -1,4 +1,4 @@
-package dev.placeholder.llmd
+package com.storytellerf.llmd
 
 import android.content.Intent
 import android.os.Build

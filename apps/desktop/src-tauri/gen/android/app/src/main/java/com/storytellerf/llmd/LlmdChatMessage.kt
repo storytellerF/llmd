@@ -1,4 +1,4 @@
-package dev.placeholder.llmd
+package com.storytellerf.llmd
 
 data class LlmdChatMessage(
     val role: String,
