@@ -2,12 +2,17 @@ package dev.placeholder.llmd
 
 import android.content.Context
 import java.io.File
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
 
 object LlmdAndroidBridge {
+    private val bridgeScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val providerMutex = Mutex()
     private var provider: AndroidLiteRtProvider? = null
     private var selectedModelPath = DEFAULT_MODEL_PATH
@@ -29,6 +34,17 @@ object LlmdAndroidBridge {
         when {
             File(selectedModelPath).isUsableModelFile() -> listOf(DEFAULT_MODEL)
             else -> emptyList()
+        }
+    }
+
+    fun chatCompletionAsync(requestId: Long, requestJson: String) {
+        bridgeScope.launch {
+            val result = runCatching { chatCompletion(requestJson) }
+            LlmdNativeServer.completeChatCompletion(
+                requestId,
+                result.getOrNull(),
+                result.exceptionOrNull()?.message,
+            )
         }
     }
 

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use jni::{
     objects::{GlobalRef, JObject, JString, JValue},
-    sys::{jboolean, JNI_FALSE, JNI_TRUE},
+    sys::{jboolean, jlong, JNI_FALSE, JNI_TRUE},
     JNIEnv, JavaVM,
 };
 use llmd_core::{
@@ -9,8 +9,12 @@ use llmd_core::{
     DEFAULT_MODEL, DEFAULT_PORT,
 };
 use std::{
+    collections::HashMap,
     path::Path,
-    sync::{Mutex, OnceLock},
+    sync::{
+        atomic::{AtomicI64, Ordering},
+        Mutex, OnceLock,
+    },
     thread::JoinHandle,
 };
 use tokio::sync::oneshot;
@@ -21,6 +25,11 @@ const DEFAULT_MODEL_PATH: &str = "/data/local/tmp/llmd/gemma-4-E2B-it.litertlm";
 static JAVA_VM: OnceLock<JavaVM> = OnceLock::new();
 static BRIDGE_INSTANCE: OnceLock<GlobalRef> = OnceLock::new();
 static SERVER_HANDLE: Mutex<Option<NativeServerHandle>> = Mutex::new(None);
+static NEXT_CHAT_COMPLETION_ID: AtomicI64 = AtomicI64::new(1);
+static PENDING_CHAT_COMPLETIONS: OnceLock<PendingChatCompletions> = OnceLock::new();
+
+type ChatCompletionSender = oneshot::Sender<Result<String, LlmdError>>;
+type PendingChatCompletions = Mutex<HashMap<i64, ChatCompletionSender>>;
 
 struct NativeServerHandle {
     shutdown: oneshot::Sender<()>,
@@ -52,10 +61,7 @@ impl ModelProvider for AndroidLiteRtProvider {
 
         let request_json = serde_json::to_string(&request)
             .map_err(|error| LlmdError::Backend(error.to_string()))?;
-        let content =
-            tokio::task::spawn_blocking(move || call_bridge_string("chatCompletion", request_json))
-                .await
-                .map_err(|error| LlmdError::Backend(error.to_string()))??;
+        let content = call_bridge_chat_completion(request_json).await?;
 
         Ok(ChatResponse {
             model: DEFAULT_MODEL.to_string(),
@@ -78,7 +84,31 @@ fn is_usable_model_file(path: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn call_bridge_string(method: &str, argument: String) -> Result<String, LlmdError> {
+async fn call_bridge_chat_completion(request_json: String) -> Result<String, LlmdError> {
+    let request_id = NEXT_CHAT_COMPLETION_ID.fetch_add(1, Ordering::Relaxed);
+    let (completion_tx, completion_rx) = oneshot::channel();
+    pending_chat_completions()
+        .lock()
+        .map_err(|_| LlmdError::Backend("Android chat completion lock is poisoned".to_string()))?
+        .insert(request_id, completion_tx);
+
+    if let Err(error) = start_bridge_chat_completion(request_id, request_json) {
+        let _ = pending_chat_completions()
+            .lock()
+            .map(|mut pending| pending.remove(&request_id));
+        return Err(error);
+    }
+
+    completion_rx.await.map_err(|_| {
+        LlmdError::Backend("Android chat completion callback was dropped".to_string())
+    })?
+}
+
+fn pending_chat_completions() -> &'static PendingChatCompletions {
+    PENDING_CHAT_COMPLETIONS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn start_bridge_chat_completion(request_id: i64, request_json: String) -> Result<(), LlmdError> {
     let vm = JAVA_VM
         .get()
         .ok_or_else(|| LlmdError::Backend("Android JavaVM is not initialized".to_string()))?;
@@ -89,23 +119,17 @@ fn call_bridge_string(method: &str, argument: String) -> Result<String, LlmdErro
     let mut env = vm
         .attach_current_thread()
         .map_err(|error| LlmdError::Backend(error.to_string()))?;
-    let argument = env
-        .new_string(argument)
+    let request_json = env
+        .new_string(request_json)
         .map_err(|error| LlmdError::Backend(error.to_string()))?;
-    let value = env
+    env
         .call_method(
             bridge.as_obj(),
-            method,
-            "(Ljava/lang/String;)Ljava/lang/String;",
-            &[JValue::Object(&argument)],
+            "chatCompletionAsync",
+            "(JLjava/lang/String;)V",
+            &[JValue::Long(request_id), JValue::Object(&request_json)],
         )
-        .map_err(|error| LlmdError::Backend(error.to_string()))?;
-    let value = value
-        .l()
-        .map_err(|error| LlmdError::Backend(error.to_string()))?;
-    let value = JString::from(value);
-    env.get_string(&value)
-        .map(|value| value.into())
+        .map(|_| ())
         .map_err(|error| LlmdError::Backend(error.to_string()))
 }
 
@@ -218,4 +242,54 @@ pub unsafe extern "system" fn Java_dev_placeholder_llmd_LlmdNativeServer_stopSer
     if let Err(error) = stop_server_inner() {
         eprintln!("failed to stop native Android server: {error}");
     }
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_dev_placeholder_llmd_LlmdNativeServer_completeChatCompletion(
+    mut env: JNIEnv<'_>,
+    _this: JObject<'_>,
+    request_id: jlong,
+    response: JObject<'_>,
+    error: JObject<'_>,
+) {
+    let result = match read_nullable_string(&mut env, error) {
+        Ok(Some(message)) => Err(LlmdError::Backend(message)),
+        Ok(None) => match read_nullable_string(&mut env, response) {
+            Ok(Some(response)) => Ok(response),
+            Ok(None) => Err(LlmdError::Backend(
+                "Android chat completion returned no response".to_string(),
+            )),
+            Err(error) => Err(error),
+        },
+        Err(error) => Err(error),
+    };
+
+    match pending_chat_completions()
+        .lock()
+        .map(|mut pending| pending.remove(&request_id))
+    {
+        Ok(Some(sender)) => {
+            let _ = sender.send(result);
+        }
+        Ok(None) => {
+            eprintln!("received unknown Android chat completion id: {request_id}");
+        }
+        Err(error) => {
+            eprintln!("failed to complete Android chat completion: {error}");
+        }
+    }
+}
+
+fn read_nullable_string(
+    env: &mut JNIEnv<'_>,
+    value: JObject<'_>,
+) -> Result<Option<String>, LlmdError> {
+    if value.is_null() {
+        return Ok(None);
+    }
+
+    let value = JString::from(value);
+    env.get_string(&value)
+        .map(|value| Some(value.into()))
+        .map_err(|error| LlmdError::Backend(error.to_string()))
 }
