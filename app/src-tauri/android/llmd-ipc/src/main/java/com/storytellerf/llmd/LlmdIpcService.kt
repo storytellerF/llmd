@@ -20,18 +20,15 @@ class LlmdIpcService : Service() {
 
     private val binder = object : ILlmdService.Stub() {
         override fun healthAsync(callback: ILlmdChatCallback) {
-            enforceAllowedCaller()
-            respond(callback) { buildHealthResponse() }
+            respondAuthorized(callback) { buildHealthResponse() }
         }
 
         override fun listModelsAsync(callback: ILlmdChatCallback) {
-            enforceAllowedCaller()
-            respond(callback) { buildListModelsResponse() }
+            respondAuthorized(callback) { buildListModelsResponse() }
         }
 
         override fun chatCompletionAsync(requestJson: String, callback: ILlmdChatCallback) {
-            enforceAllowedCaller()
-            respond(callback) { buildChatCompletionResponse(requestJson) }
+            respondAuthorized(callback) { buildChatCompletionResponse(requestJson) }
         }
     }
 
@@ -47,6 +44,15 @@ class LlmdIpcService : Service() {
             val response = buildResponse()
             runCatching { callback.onComplete(response) }
         }
+    }
+
+    private fun respondAuthorized(callback: ILlmdChatCallback, buildResponse: suspend () -> String) {
+        val callingUid = Binder.getCallingUid()
+        if (!LlmdIpcAuthorization.isAuthorized(this, callingUid)) {
+            runCatching { callback.onComplete(authorizationRequiredResponse()) }
+            return
+        }
+        respond(callback, buildResponse)
     }
 
     private suspend fun buildHealthResponse(): String =
@@ -118,13 +124,6 @@ class LlmdIpcService : Service() {
             }
         }
 
-    private fun enforceAllowedCaller() {
-        val packages = packageManager.getPackagesForUid(Binder.getCallingUid()).orEmpty()
-        check(packages.any { it in ALLOWED_CALLER_PACKAGES }) {
-            "Caller is not allowed to use llmd IPC"
-        }
-    }
-
     private fun errorResponse(error: Throwable): String =
         JSONObject()
             .put(
@@ -135,9 +134,18 @@ class LlmdIpcService : Service() {
             )
             .toString()
 
+    private fun authorizationRequiredResponse(): String =
+        JSONObject()
+            .put(
+                "error",
+                JSONObject()
+                    .put("message", "Caller is not authorized to use llmd IPC")
+                    .put("type", "authorization_required"),
+            )
+            .toString()
+
     private companion object {
         const val DEFAULT_MODEL = "gemma-4-E2B-it"
         const val PROVIDER = "litert-lm-android"
-        val ALLOWED_CALLER_PACKAGES = setOf("dev.divedeep.android")
     }
 }

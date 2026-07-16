@@ -53,5 +53,15 @@
                 <action android:name="com.storytellerf.llmd.action.BIND_IPC" />
             </intent-filter>
         </service>
+
+        <activity
+            android:name=".LlmdIpcAuthorizationActivity"
+            android:exported="true"
+            android:label="@string/ipc_authorization_title">
+            <intent-filter>
+                <action android:name="com.storytellerf.llmd.action.AUTHORIZE_CALLER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>
