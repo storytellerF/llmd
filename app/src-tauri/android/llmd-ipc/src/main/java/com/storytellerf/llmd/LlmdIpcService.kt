@@ -54,7 +54,6 @@ class LlmdIpcService : Service() {
             JSONObject()
                 .put("status", "ok")
                 .put("provider", PROVIDER)
-                .put("model", DEFAULT_MODEL)
                 .toString()
         }
 
