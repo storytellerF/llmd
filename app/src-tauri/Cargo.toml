@@ -3,7 +3,7 @@ name = "llmd-app"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/placeholder/llmd"
+repository = "https://github.com/storytellerF/llmd"
 rust-version = "1.78"
 
 [lib]
