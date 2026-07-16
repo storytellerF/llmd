@@ -39,20 +39,16 @@ class LlmdIpcService : Service() {
         super.onDestroy()
     }
 
-    private fun respond(callback: ILlmdChatCallback, buildResponse: suspend () -> String) {
-        serviceScope.launch {
-            val response = buildResponse()
-            runCatching { callback.onComplete(response) }
-        }
-    }
-
     private fun respondAuthorized(callback: ILlmdChatCallback, buildResponse: suspend () -> String) {
         val callingUid = Binder.getCallingUid()
-        if (!LlmdIpcAuthorization.isAuthorized(this, callingUid)) {
-            runCatching { callback.onComplete(authorizationRequiredResponse()) }
-            return
+        serviceScope.launch {
+            val response = if (LlmdIpcAuthorization.isAuthorized(this@LlmdIpcService, callingUid)) {
+                buildResponse()
+            } else {
+                authorizationRequiredResponse()
+            }
+            runCatching { callback.onComplete(response) }
         }
-        respond(callback, buildResponse)
     }
 
     private suspend fun buildHealthResponse(): String =

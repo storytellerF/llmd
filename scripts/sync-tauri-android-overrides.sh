@@ -36,6 +36,10 @@ if ! grep -Fq 'applicationId = "com.storytellerf.llmd"' "${BUILD_FILE}"; then
   perl -0pi -e 's/applicationId = "[^"]+"/applicationId = "com.storytellerf.llmd"/' "${BUILD_FILE}"
 fi
 
+if ! grep -Fq 'androidx.datastore:datastore-preferences' "${BUILD_FILE}"; then
+  perl -0pi -e 's#(\n\s*implementation\("org\.jetbrains\.kotlinx:kotlinx-coroutines-android:[^"]+"\))#$1\n    implementation("androidx.datastore:datastore-preferences:1.2.1")#' "${BUILD_FILE}"
+fi
+
 if ! grep -Fq 'LlmdIpcService' "${MANIFEST_FILE}"; then
   perl -0pi -e 's#(\n\s*</application>)#\n\n        <service\n            android:name=".LlmdIpcService"\n            android:exported="true">\n            <intent-filter>\n                <action android:name="com.storytellerf.llmd.action.BIND_IPC" />\n            </intent-filter>\n        </service>$1#' "${MANIFEST_FILE}"
 fi

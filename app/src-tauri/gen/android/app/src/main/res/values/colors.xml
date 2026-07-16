@@ -7,4 +7,12 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="ipc_auth_background">#F5F7F8</color>
+    <color name="ipc_auth_surface">#FFFFFFFF</color>
+    <color name="ipc_auth_panel">#F8FAFA</color>
+    <color name="ipc_auth_border">#D8E0E2</color>
+    <color name="ipc_auth_text">#172026</color>
+    <color name="ipc_auth_muted">#5E6B73</color>
+    <color name="ipc_auth_accent">#0E7490</color>
+    <color name="ipc_auth_accent_soft">#E0F2F6</color>
 </resources>

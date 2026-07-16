@@ -3,40 +3,49 @@ package com.storytellerf.llmd
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.preferencesDataStore
 import java.security.MessageDigest
+import kotlinx.coroutines.flow.first
+
+private val Context.ipcAuthorizationStore by preferencesDataStore(
+    name = "llmd_ipc_authorizations",
+)
 
 object LlmdIpcAuthorization {
     const val ACTION_AUTHORIZE_CALLER = "com.storytellerf.llmd.action.AUTHORIZE_CALLER"
     const val EXTRA_CALLER_PACKAGE = "caller_package"
 
-    private const val PREFS = "llmd_ipc_authorizations"
     private const val DIGEST_ALGORITHM = "SHA-256"
 
-    fun isAuthorized(context: Context, callingUid: Int): Boolean {
+    suspend fun isAuthorized(context: Context, callingUid: Int): Boolean {
         val packages = context.packageManager.getPackagesForUid(callingUid).orEmpty()
         return packages.any { packageName -> isPackageAuthorized(context, packageName) }
     }
 
-    fun authorizePackage(context: Context, packageName: String): Boolean {
+    suspend fun authorizePackage(context: Context, packageName: String): Boolean {
         val digests = signingDigests(context, packageName)
 
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return prefs.edit().apply {
-            if (digests.isEmpty()) {
-                putBoolean(packageAuthorizationKey(packageName), true)
-            } else {
-                digests.forEach { digest ->
-                    putBoolean(authorizationKey(packageName, digest), true)
+        return runCatching {
+            context.ipcAuthorizationStore.edit { store ->
+                if (digests.isEmpty()) {
+                    store[authorizationPreferenceKey(packageAuthorizationKey(packageName))] = true
+                } else {
+                    digests.forEach { digest ->
+                        store[authorizationPreferenceKey(authorizationKey(packageName, digest))] = true
+                    }
                 }
             }
-        }.commit()
+            true
+        }.getOrDefault(false)
     }
 
-    fun isPackageAuthorized(context: Context, packageName: String): Boolean {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (prefs.getBoolean(packageAuthorizationKey(packageName), false)) return true
+    private suspend fun isPackageAuthorized(context: Context, packageName: String): Boolean {
+        val store = context.ipcAuthorizationStore.data.first()
+        if (store[authorizationPreferenceKey(packageAuthorizationKey(packageName))] == true) return true
         return signingDigests(context, packageName)
-            .any { digest -> prefs.getBoolean(authorizationKey(packageName, digest), false) }
+            .any { digest -> store[authorizationPreferenceKey(authorizationKey(packageName, digest))] == true }
     }
 
     fun callerLabel(context: Context, packageName: String): String =
@@ -78,4 +87,6 @@ object LlmdIpcAuthorization {
 
     private fun packageAuthorizationKey(packageName: String): String =
         "$packageName|package"
+
+    private fun authorizationPreferenceKey(key: String) = booleanPreferencesKey(key)
 }
