@@ -5,7 +5,7 @@ on:
     branches: ["main"]
     paths:
       - "app/**"
-      - "apps/**"
+      - "cli/**"
       - "crates/**"
       - "scripts/**"
       - "Cargo.toml"

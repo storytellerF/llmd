@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "apps/cli",
+    "cli",
     "crates/llmd-core",
     "crates/llmd-rlitert",
     "crates/llmd-server",

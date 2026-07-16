@@ -18,7 +18,7 @@ gemma-4-E2B-it
 
 ```text
 app                    Tauri desktop and mobile shell
-apps/cli               Terminal CLI/TUI
+cli                    Terminal CLI/TUI
 crates/llmd-core       Shared API types and provider trait
 crates/llmd-rlitert    Desktop/terminal provider backed by rlitert-lm
 crates/llmd-server     OpenAI-compatible HTTP API
