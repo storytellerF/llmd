@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ANDROID_APP_DIR="${ROOT_DIR}/apps/desktop/src-tauri/gen/android/app"
+ANDROID_APP_DIR="${ROOT_DIR}/app/src-tauri/gen/android/app"
 BUILD_FILE="${ANDROID_APP_DIR}/build.gradle.kts"
 MANIFEST_FILE="${ANDROID_APP_DIR}/src/main/AndroidManifest.xml"
 

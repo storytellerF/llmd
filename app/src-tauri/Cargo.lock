@@ -2070,17 +2070,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "llmd-core"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "futures-core",
- "serde",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "llmd-desktop"
+name = "llmd-app"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -2094,6 +2084,16 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tokio",
+]
+
+[[package]]
+name = "llmd-core"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "futures-core",
+ "serde",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

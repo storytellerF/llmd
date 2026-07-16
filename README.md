@@ -17,12 +17,12 @@ gemma-4-E2B-it
 ## Workspace
 
 ```text
-apps/cli                 Terminal CLI/TUI
-apps/desktop             Tauri desktop and mobile shell
-crates/llmd-core         Shared API types and provider trait
-crates/llmd-rlitert      Desktop/terminal provider backed by rlitert-lm
-crates/llmd-server       OpenAI-compatible HTTP API
-docs                     Architecture and test notes
+app                    Tauri desktop and mobile shell
+apps/cli               Terminal CLI/TUI
+crates/llmd-core       Shared API types and provider trait
+crates/llmd-rlitert    Desktop/terminal provider backed by rlitert-lm
+crates/llmd-server     OpenAI-compatible HTTP API
+docs                   Architecture and test notes
 ```
 
 ## CLI
@@ -69,14 +69,14 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 ## Desktop
 
 ```bash
-cd apps/desktop
+cd app
 npm install
 npm run tauri dev
 ```
 
 ## Android
 
-Android uses the shared Tauri UI in `apps/desktop`. The device app should expose the same OpenAI-compatible API as desktop and CLI, backed by native `litertlm-android`.
+Android uses the shared Tauri UI in `app`. The device app should expose the same OpenAI-compatible API as desktop and CLI, backed by native `litertlm-android`.
 
 Prepare the default Gemma 4 E2B model:
 
@@ -111,7 +111,7 @@ cargo test --workspace
 Run the Tauri desktop tests:
 
 ```bash
-cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+cargo test --manifest-path app/src-tauri/Cargo.toml
 ```
 
 Run OpenAI-compatible API tests against any running endpoint:

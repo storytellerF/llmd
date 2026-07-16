@@ -15,7 +15,7 @@ import android.webkit.WebResourceResponse
 
 object Rust {
     init {
-        System.loadLibrary("llmd_desktop")
+        System.loadLibrary("llmd_app")
     }
 
     @JvmStatic external fun onActivityCreate(activity: WryActivity)

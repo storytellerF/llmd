@@ -5,7 +5,7 @@ members = [
     "crates/llmd-rlitert",
     "crates/llmd-server",
 ]
-exclude = ["apps/desktop/src-tauri"]
+exclude = ["app/src-tauri"]
 resolver = "2"
 
 [workspace.package]

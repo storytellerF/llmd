@@ -1,6 +1,6 @@
 # Android Tauri OpenAI API Plan
 
-Android uses the shared Tauri UI from `apps/desktop`.
+Android uses the shared Tauri UI from `app`.
 
 The Android client should:
 
