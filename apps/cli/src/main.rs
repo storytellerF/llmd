@@ -46,6 +46,7 @@ enum Commands {
     Tui,
 }
 
+#[cfg(test)]
 fn parse_cli_from<I, T>(args: I) -> Result<Cli, clap::Error>
 where
     I: IntoIterator<Item = T>,

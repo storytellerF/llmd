@@ -40,15 +40,11 @@ jobs:
         working-directory: app
         run: npm ci
 
-      - name: Check shell scripts
-        run: bash -n scripts/*.sh
+      - name: Run static checks
+        run: ./scripts/check-static.sh --host
 
       - name: Run Rust tests
         run: cargo test --workspace --locked
-
-      - name: Build frontend
-        working-directory: app
-        run: npm run build
 
   android-compile:
     runs-on: ubuntu-latest
@@ -73,5 +69,4 @@ jobs:
       - name: Compile Android Kotlin and AIDL
         working-directory: app/src-tauri/gen/android
         run: |
-          ../../../../scripts/sync-tauri-android-overrides.sh
-          ./gradlew :app:compileArm64DebugKotlin --no-daemon
+          ../../../../scripts/check-static.sh --android-kotlin
