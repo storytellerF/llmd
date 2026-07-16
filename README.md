@@ -91,6 +91,7 @@ ANDROID_UDID=<device-serial> scripts/prepare-android-model.sh
 ```
 
 The default model path is `models/gemma/gemma-4-E2B-it.litertlm`. Model files are ignored by git.
+The Android preparation script copies that file into the app-private `files/models` directory, so install a debuggable APK before running it.
 
 After the Tauri Android app is installed and its device-local API server is running, test the API through `adb reverse`:
 

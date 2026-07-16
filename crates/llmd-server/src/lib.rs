@@ -6,7 +6,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use futures_util::StreamExt;
+use futures_util::{stream as futures_stream, StreamExt};
 use llmd_core::{ChatMessage, ChatRequest, LlmdError, ModelProvider};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -274,30 +274,53 @@ async fn chat_stream(state: AppState, request: ChatRequest) -> Response {
     };
 
     let mut first = true;
-    let sse = stream.map(move |token| {
-        let event = match token {
-            Ok(content) => {
-                let chunk = OpenAiChunk {
-                    id: id.clone(),
+    let terminal_id = id.clone();
+    let terminal_model = model.clone();
+    let sse = stream
+        .map(move |token| {
+            let event = match token {
+                Ok(content) => {
+                    let chunk = OpenAiChunk {
+                        id: id.clone(),
+                        object: "chat.completion.chunk",
+                        created,
+                        model: model.clone(),
+                        choices: vec![OpenAiChunkChoice {
+                            index: 0,
+                            delta: OpenAiDelta {
+                                role: first.then_some("assistant"),
+                                content: Some(content),
+                            },
+                            finish_reason: None,
+                        }],
+                    };
+                    first = false;
+                    Event::default().data(serde_json::to_string(&chunk).unwrap_or_default())
+                }
+                Err(error) => Event::default().event("error").data(error.to_string()),
+            };
+            Ok::<_, Infallible>(event)
+        })
+        .chain(futures_stream::iter([
+            Ok(Event::default().data(
+                serde_json::to_string(&OpenAiChunk {
+                    id: terminal_id,
                     object: "chat.completion.chunk",
                     created,
-                    model: model.clone(),
+                    model: terminal_model,
                     choices: vec![OpenAiChunkChoice {
                         index: 0,
                         delta: OpenAiDelta {
-                            role: first.then_some("assistant"),
-                            content: Some(content),
+                            role: None,
+                            content: None,
                         },
-                        finish_reason: None,
+                        finish_reason: Some("stop"),
                     }],
-                };
-                first = false;
-                Event::default().data(serde_json::to_string(&chunk).unwrap_or_default())
-            }
-            Err(error) => Event::default().event("error").data(error.to_string()),
-        };
-        Ok::<_, Infallible>(event)
-    });
+                })
+                .unwrap_or_default(),
+            )),
+            Ok(Event::default().data("[DONE]")),
+        ]));
 
     Sse::new(sse).into_response()
 }
@@ -499,5 +522,7 @@ mod tests {
         assert!(body.contains("\"role\":\"assistant\""));
         assert!(body.contains("hello"));
         assert!(body.contains(" world"));
+        assert!(body.contains("\"finish_reason\":\"stop\""));
+        assert!(body.contains("data: [DONE]"));
     }
 }

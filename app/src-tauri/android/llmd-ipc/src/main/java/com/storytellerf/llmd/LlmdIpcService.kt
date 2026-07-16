@@ -59,6 +59,7 @@ class LlmdIpcService : Service() {
 
     private suspend fun buildListModelsResponse(): String =
         withContext(Dispatchers.Default) {
+            LlmdAndroidBridge.configure(this@LlmdIpcService)
             val models = LlmdAndroidBridge.listModels()
             JSONObject()
                 .put("object", "list")
