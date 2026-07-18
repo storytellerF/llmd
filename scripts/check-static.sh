@@ -89,6 +89,11 @@ run_host_checks() {
 }
 
 run_android_kotlin_checks() {
+  if [[ ! -f "${ROOT_DIR}/app/src-tauri/gen/android/tauri.settings.gradle" ]]; then
+    step "Generating Tauri Android Gradle files"
+    (cd "${ROOT_DIR}" && npm --prefix app exec tauri android init -- --ci --skip-targets-install)
+  fi
+
   step "Syncing Tauri Android overrides"
   "${ROOT_DIR}/scripts/sync-tauri-android-overrides.sh"
 
