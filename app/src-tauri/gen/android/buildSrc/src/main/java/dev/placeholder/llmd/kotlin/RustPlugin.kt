@@ -47,7 +47,13 @@ open class RustPlugin : Plugin<Project> {
         }
 
         afterEvaluate {
-            for (profile in listOf("debug", "release")) {
+            val profiles = mapOf(
+                "debug" to false,
+                "release" to true,
+                "daily" to true,
+                "e2e" to true,
+            )
+            for ((profile, isRelease) in profiles) {
                 val profileCapitalized = profile.replaceFirstChar { it.uppercase() }
                 val buildTask = tasks.maybeCreate(
                     "rustBuildUniversal$profileCapitalized",
@@ -71,7 +77,7 @@ open class RustPlugin : Plugin<Project> {
                         description = "Build dynamic library in $profile mode for $targetArch"
                         rootDirRel = config.rootDirRel
                         target = targetName
-                        release = profile == "release"
+                        release = isRelease
                     }
 
                     buildTask.dependsOn(targetBuildTask)
