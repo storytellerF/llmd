@@ -72,6 +72,19 @@ jobs:
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: app
+        run: npm ci
 
       - name: Configure preinstalled Android SDK
         run: |
@@ -79,6 +92,10 @@ jobs:
           test -d "${ANDROID_SDK_ROOT}"
           test -d "${ANDROID_NDK_HOME}"
           echo "NDK_HOME=${ANDROID_NDK_HOME}" >> "$GITHUB_ENV"
+
+      - name: Generate Tauri Android project
+        working-directory: app
+        run: npx tauri android build --apk --debug --target aarch64 --ci
 
       - name: Compile Android Kotlin and AIDL
         working-directory: app/src-tauri/gen/android
