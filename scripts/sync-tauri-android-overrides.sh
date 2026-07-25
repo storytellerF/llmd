@@ -7,10 +7,11 @@ ANDROID_APP_DIR="${ANDROID_ROOT_DIR}/app"
 ANDROID_LIBRARY_DIR="${ROOT_DIR}/app/src-tauri/android/llmd-android"
 MAIN_ACTIVITY_OVERRIDE="${ROOT_DIR}/app/src-tauri/android/app-overrides/MainActivity.kt"
 SETTINGS_FILE="${ANDROID_ROOT_DIR}/settings.gradle"
+ROOT_BUILD_FILE="${ANDROID_ROOT_DIR}/build.gradle.kts"
 BUILD_FILE="${ANDROID_APP_DIR}/build.gradle.kts"
 MANIFEST_FILE="${ANDROID_APP_DIR}/src/main/AndroidManifest.xml"
 PROGUARD_FILE="${ANDROID_APP_DIR}/proguard-rules.pro"
-RUST_PLUGIN_FILE="${ANDROID_ROOT_DIR}/buildSrc/src/main/java/dev/placeholder/llmd/kotlin/RustPlugin.kt"
+RUST_PLUGIN_FILE="$(find "${ANDROID_ROOT_DIR}/buildSrc" -type f -name RustPlugin.kt -print -quit)"
 
 need_file() {
   local path="$1"
@@ -23,6 +24,7 @@ need_file() {
 
 need_file "${BUILD_FILE}"
 need_file "${SETTINGS_FILE}"
+need_file "${ROOT_BUILD_FILE}"
 need_file "${MANIFEST_FILE}"
 need_file "${PROGUARD_FILE}"
 need_file "${RUST_PLUGIN_FILE}"
@@ -47,6 +49,9 @@ fi
 if ! grep -Fq 'applicationId = "com.storytellerf.llmd"' "${BUILD_FILE}"; then
   perl -0pi -e 's/applicationId = "[^"]+"/applicationId = "com.storytellerf.llmd"/' "${BUILD_FILE}"
 fi
+
+perl -0pi -e 's/minSdk = \d+/minSdk = 35/' "${BUILD_FILE}"
+perl -0pi -e 's#org\.jetbrains\.kotlin:kotlin-gradle-plugin:[^"]+#org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.21#' "${ROOT_BUILD_FILE}"
 
 perl -0pi -e 's#\n\s*sourceSets\s*\{\s*getByName\("main"\)\s*\{\s*java\.srcDir\("../../../android/llmd-ipc/src/main/java"\)\s*aidl\.srcDir\("../../../android/llmd-ipc/src/main/aidl"\)\s*\}\s*\}\n#\n#s' "${BUILD_FILE}"
 perl -0pi -e 's#\n\s*implementation\("com\.google\.ai\.edge\.litertlm:litertlm-android:[^"]+"\)##' "${BUILD_FILE}"
@@ -78,5 +83,8 @@ if ! grep -Fq '"e2e" to true' "${RUST_PLUGIN_FILE}"; then
   perl -0pi -e 's#for \(profile in listOf\("debug", "release"\)\) \{#val profiles = mapOf(\n                "debug" to false,\n                "release" to true,\n                "daily" to true,\n                "e2e" to true,\n            )\n            for ((profile, isRelease) in profiles) {#' "${RUST_PLUGIN_FILE}"
   perl -0pi -e 's#release = profile == "release"#release = isRelease#' "${RUST_PLUGIN_FILE}"
 fi
+
+perl -0pi -e 's#tasks\["mergeUniversal\$\{profileCapitalized\}JniLibFolders"\]\.dependsOn\(buildTask\)#tasks.findByName("mergeUniversal\${profileCapitalized}JniLibFolders")?.dependsOn(buildTask)#' "${RUST_PLUGIN_FILE}"
+perl -0pi -e 's#tasks\["merge\$targetArchCapitalized\$\{profileCapitalized\}JniLibFolders"\]\.dependsOn\(\n\s*targetBuildTask\n\s*\)#tasks.findByName("merge\$targetArchCapitalized\${profileCapitalized}JniLibFolders")?.dependsOn(targetBuildTask)#' "${RUST_PLUGIN_FILE}"
 
 echo "Synced Tauri Android llmd overrides."

@@ -95,6 +95,13 @@ jobs:
 
       - name: Generate Tauri Android project
         working-directory: app
+        run: npx tauri android init --ci
+
+      - name: Apply Android overrides
+        run: ./scripts/sync-tauri-android-overrides.sh
+
+      - name: Build Tauri Android project
+        working-directory: app
         run: npx tauri android build --apk --debug --target aarch64 --ci
 
       - name: Compile Android Kotlin and AIDL

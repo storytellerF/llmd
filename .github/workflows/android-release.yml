@@ -77,6 +77,7 @@ jobs:
       - name: Build Android APK
         working-directory: app
         run: |
+          npx tauri android init --ci
           ../scripts/sync-tauri-android-overrides.sh
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             npx tauri android build --apk --target "${ANDROID_TARGET}" --ci
