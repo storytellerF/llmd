@@ -76,20 +76,6 @@ android {
             versionNameSuffix = "-daily"
             matchingFallbacks += listOf("release")
         }
-        create("e2e") {
-            initWith(getByName("release"))
-            manifestPlaceholders["usesCleartextTraffic"] = "true"
-            isDebuggable = false
-            isJniDebuggable = false
-            signingConfig = signingConfigs.getByName("debug")
-            matchingFallbacks += listOf("release")
-            packaging {
-                jniLibs.keepDebugSymbols.add("*/arm64-v8a/*.so")
-                jniLibs.keepDebugSymbols.add("*/armeabi-v7a/*.so")
-                jniLibs.keepDebugSymbols.add("*/x86/*.so")
-                jniLibs.keepDebugSymbols.add("*/x86_64/*.so")
-            }
-        }
     }
     kotlinOptions {
         jvmTarget = "17"
@@ -101,12 +87,6 @@ android {
     buildFeatures {
         aidl = true
         buildConfig = true
-    }
-    sourceSets {
-        getByName("main") {
-            java.srcDir("../../../android/llmd-ipc/src/main/java")
-            aidl.srcDir("../../../android/llmd-ipc/src/main/aidl")
-        }
     }
 }
 
@@ -120,8 +100,6 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.10.1")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
-    implementation("com.google.ai.edge.litertlm:litertlm-android:0.13.1")
-    implementation("androidx.datastore:datastore-preferences:1.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.4")

@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import com.storytellerf.llmd.android.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -91,7 +92,7 @@ class LlmdForegroundService : Service() {
     }
 
     private fun buildNotification(): Notification {
-        val launchIntent = Intent(this, MainActivity::class.java)
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName) ?: Intent()
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
@@ -102,7 +103,7 @@ class LlmdForegroundService : Service() {
         return Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("LLMD API is running")
             .setContentText("OpenAI-compatible API on 127.0.0.1:11435")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_llmd_api)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()
