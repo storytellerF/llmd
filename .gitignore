@@ -3,7 +3,7 @@
 /app/dist/
 /app/src-tauri/target/
 /app/src-tauri/android/*/build/
-/app/src-tauri/gen/android/app/src/main/java/com/storytellerf/llmd/MainActivity.kt
+/app/src-tauri/gen/android/
 *.log
 /models/**/*.litertlm
 /build/
