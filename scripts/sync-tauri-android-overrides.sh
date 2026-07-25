@@ -49,8 +49,8 @@ if [[ ! -d "${ANDROID_LIBRARY_DIR}" ]]; then
 fi
 
 if ! grep -Eq "include [\"']:llmd-android[\"']" "${SETTINGS_FILE}"; then
-  printf '\n{{LLMD_ANDROID_SETTINGS}}\n' >>"${SETTINGS_FILE}"
-  apply_template "${SETTINGS_FILE}" "{{LLMD_ANDROID_SETTINGS}}" "${PATCHES_DIR}/settings.gradle"
+  printf '\n__LLMD_ANDROID_SETTINGS__\n' >>"${SETTINGS_FILE}"
+  apply_template "${SETTINGS_FILE}" "__LLMD_ANDROID_SETTINGS__" "${PATCHES_DIR}/settings.gradle"
 fi
 
 if ! grep -Fq 'namespace = "com.storytellerf.llmd"' "${BUILD_FILE}"; then
@@ -69,13 +69,13 @@ perl -0pi -e 's#\n\s*implementation\("com\.google\.ai\.edge\.litertlm:litertlm-a
 perl -0pi -e 's#\n\s*implementation\("androidx\.datastore:datastore-preferences:[^"]+"\)##' "${BUILD_FILE}"
 
 if ! grep -Fq 'implementation(project(":llmd-android"))' "${BUILD_FILE}"; then
-  perl -0pi -e 's#(\ndependencies \{\n)#$1{{LLMD_ANDROID_DEPENDENCY}}\n#' "${BUILD_FILE}"
-  apply_template "${BUILD_FILE}" "{{LLMD_ANDROID_DEPENDENCY}}" "${PATCHES_DIR}/app-dependency.gradle.kts"
+  perl -0pi -e 's#(\ndependencies \{\n)#$1__LLMD_ANDROID_DEPENDENCY__\n#' "${BUILD_FILE}"
+  apply_template "${BUILD_FILE}" "__LLMD_ANDROID_DEPENDENCY__" "${PATCHES_DIR}/app-dependency.gradle.kts"
 fi
 
 if ! grep -Fq 'create("daily")' "${BUILD_FILE}" && ! grep -Fq 'create("e2e")' "${BUILD_FILE}"; then
-  perl -0pi -e 's#(\n    \}\n    kotlinOptions \{)#\n{{LLMD_ANDROID_BUILD_TYPES}}$1#' "${BUILD_FILE}"
-  apply_template "${BUILD_FILE}" "{{LLMD_ANDROID_BUILD_TYPES}}" "${PATCHES_DIR}/build-types.gradle.kts"
+  perl -0pi -e 's#(\n    \}\n    kotlinOptions \{)#\n__LLMD_ANDROID_BUILD_TYPES__$1#' "${BUILD_FILE}"
+  apply_template "${BUILD_FILE}" "__LLMD_ANDROID_BUILD_TYPES__" "${PATCHES_DIR}/build-types.gradle.kts"
 elif ! grep -Fq 'create("daily")' "${BUILD_FILE}" || ! grep -Fq 'create("e2e")' "${BUILD_FILE}"; then
   echo "Generated Android project contains only one llmd custom build type." >&2
   echo "Regenerate the Android project before rerunning this script." >&2
@@ -83,8 +83,8 @@ elif ! grep -Fq 'create("daily")' "${BUILD_FILE}" || ! grep -Fq 'create("e2e")' 
 fi
 
 if ! grep -Fq 'MainActivity$ModelImportBridge' "${PROGUARD_FILE}"; then
-  printf '\n{{LLMD_MODEL_IMPORT_PROGUARD}}\n' >>"${PROGUARD_FILE}"
-  apply_template "${PROGUARD_FILE}" "{{LLMD_MODEL_IMPORT_PROGUARD}}" "${PATCHES_DIR}/proguard-rules.pro"
+  printf '\n__LLMD_MODEL_IMPORT_PROGUARD__\n' >>"${PROGUARD_FILE}"
+  apply_template "${PROGUARD_FILE}" "__LLMD_MODEL_IMPORT_PROGUARD__" "${PATCHES_DIR}/proguard-rules.pro"
 fi
 
 MAIN_ACTIVITY_TARGET="${ANDROID_APP_DIR}/src/main/java/com/storytellerf/llmd/MainActivity.kt"
