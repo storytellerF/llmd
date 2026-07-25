@@ -61,8 +61,12 @@ if ! grep -Fq 'implementation(project(":llmd-android"))' "${BUILD_FILE}"; then
   perl -0pi -e 's#(\ndependencies \{\n)#$1    implementation(project(":llmd-android"))\n#' "${BUILD_FILE}"
 fi
 
+if ! grep -Fq 'create("daily")' "${BUILD_FILE}"; then
+  perl -0pi -e 's#(\n    \}\n    kotlinOptions \{)#\n        create("daily") {\n            initWith(getByName("release"))\n            applicationIdSuffix = ".daily"\n            versionNameSuffix = "-daily"\n            matchingFallbacks += listOf("release")\n        }$1#' "${BUILD_FILE}"
+fi
+
 if ! grep -Fq 'create("e2e")' "${BUILD_FILE}"; then
-  perl -0pi -e 's#(\n\s*create\("daily"\) \{\n\s*initWith\(getByName\("release"\)\)\n\s*applicationIdSuffix = "\.daily"\n\s*versionNameSuffix = "-daily"\n\s*matchingFallbacks \+= listOf\("release"\)\n\s*\}\n)#$1        create("e2e") {\n            initWith(getByName("release"))\n            manifestPlaceholders["usesCleartextTraffic"] = "true"\n            isDebuggable = false\n            isJniDebuggable = false\n            signingConfig = signingConfigs.getByName("debug")\n            matchingFallbacks += listOf("release")\n            packaging {\n                jniLibs.keepDebugSymbols.add("*/arm64-v8a/*.so")\n                jniLibs.keepDebugSymbols.add("*/armeabi-v7a/*.so")\n                jniLibs.keepDebugSymbols.add("*/x86/*.so")\n                jniLibs.keepDebugSymbols.add("*/x86_64/*.so")\n            }\n        }\n#s' "${BUILD_FILE}"
+  perl -0pi -e 's#(\n    \}\n    kotlinOptions \{)#\n        create("e2e") {\n            initWith(getByName("release"))\n            manifestPlaceholders["usesCleartextTraffic"] = "true"\n            isDebuggable = false\n            isJniDebuggable = false\n            signingConfig = signingConfigs.getByName("debug")\n            matchingFallbacks += listOf("release")\n            packaging {\n                jniLibs.keepDebugSymbols.add("*/arm64-v8a/*.so")\n                jniLibs.keepDebugSymbols.add("*/armeabi-v7a/*.so")\n                jniLibs.keepDebugSymbols.add("*/x86/*.so")\n                jniLibs.keepDebugSymbols.add("*/x86_64/*.so")\n            }\n        }$1#' "${BUILD_FILE}"
 fi
 
 if ! grep -Fq 'MainActivity$ModelImportBridge' "${PROGUARD_FILE}"; then
@@ -79,10 +83,8 @@ MAIN_ACTIVITY_TARGET="${ANDROID_APP_DIR}/src/main/java/com/storytellerf/llmd/Mai
 mkdir -p "$(dirname "${MAIN_ACTIVITY_TARGET}")"
 cp "${MAIN_ACTIVITY_OVERRIDE}" "${MAIN_ACTIVITY_TARGET}"
 
-if ! grep -Fq '"e2e" to true' "${RUST_PLUGIN_FILE}"; then
-  perl -0pi -e 's#for \(profile in listOf\("debug", "release"\)\) \{#val profiles = mapOf(\n                "debug" to false,\n                "release" to true,\n                "daily" to true,\n                "e2e" to true,\n            )\n            for ((profile, isRelease) in profiles) {#' "${RUST_PLUGIN_FILE}"
-  perl -0pi -e 's#release = profile == "release"#release = isRelease#' "${RUST_PLUGIN_FILE}"
-fi
+perl -0pi -e 's#val profiles = mapOf\(\n\s*"debug" to false,\n\s*"release" to true,\n\s*"daily" to true,\n\s*"e2e" to true,\n\s*\)\n\s*for \(\(profile, isRelease\) in profiles\) \{#for (profile in listOf("debug", "release")) {#s' "${RUST_PLUGIN_FILE}"
+perl -0pi -e 's#release = isRelease#release = profile == "release"#' "${RUST_PLUGIN_FILE}"
 
 perl -0pi -e 's#tasks\["mergeUniversal\$\{profileCapitalized\}JniLibFolders"\]\.dependsOn\(buildTask\)#tasks.findByName("mergeUniversal\${profileCapitalized}JniLibFolders")?.dependsOn(buildTask)#' "${RUST_PLUGIN_FILE}"
 perl -0pi -e 's#tasks\["merge\$targetArchCapitalized\$\{profileCapitalized\}JniLibFolders"\]\.dependsOn\(\n\s*targetBuildTask\n\s*\)#tasks.findByName("merge\$targetArchCapitalized\${profileCapitalized}JniLibFolders")?.dependsOn(targetBuildTask)#' "${RUST_PLUGIN_FILE}"
