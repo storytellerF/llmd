@@ -28,7 +28,7 @@ const modelPath = document.querySelector<HTMLSpanElement>("#model-path");
 const modelStatus = document.querySelector<HTMLParagraphElement>("#model-status");
 const modelList = document.querySelector<HTMLUListElement>("#model-list");
 const logs = document.querySelector<HTMLAnchorElement>("#logs");
-const logsPanel = document.querySelector<HTMLElement>("#logs-panel");
+const logsHeading = document.querySelector<HTMLElement>("#logs-heading");
 
 const defaultApiBase = "http://127.0.0.1:11435";
 const defaultModel = "gemma-4-E2B-it";
@@ -73,7 +73,8 @@ window.addEventListener("llmd-models-changed", (event) => {
 
 if (window.llmdAndroid) {
   if (apiBase) apiBase.textContent = "Android Binder IPC";
-  if (logsPanel) logsPanel.hidden = true;
+  if (logsHeading) logsHeading.hidden = true;
+  if (logs) logs.hidden = true;
 } else {
   if (apiBase) apiBase.textContent = defaultApiBase;
   if (logs) logs.href = `${defaultApiBase}/logs`;
