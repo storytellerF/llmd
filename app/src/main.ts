@@ -44,6 +44,7 @@ const state: {
   isLoadingModels: boolean;
   isMutatingModel: boolean;
   modelError: string | null;
+  mutationError: string | null;
   models: Model[];
   logs: LogEntry[];
 } = {
@@ -53,6 +54,7 @@ const state: {
   isLoadingModels: false,
   isMutatingModel: false,
   modelError: null,
+  mutationError: null,
   models: [],
   logs: [],
 };
@@ -61,7 +63,10 @@ window.addEventListener("hashchange", render);
 window.addEventListener("llmd-models-changed", (event) => {
   const androidState = (event as CustomEvent<AndroidModelState>).detail;
   state.models = modelsFromAndroid(androidState);
-  state.modelError = androidState.error ?? null;
+  state.modelError = null;
+  state.mutationError = androidState.error
+    ? `Model operation failed: ${androidState.error}`
+    : null;
   state.isMutatingModel = false;
   const message = androidState.error
     ? `Model import failed: ${androidState.error}`
@@ -156,6 +161,9 @@ function renderStatusPage(): string {
 }
 
 function renderModelsPage(): string {
+  const mutationError = state.mutationError
+    ? `<p class="mutation-error" role="alert">${escapeHtml(state.mutationError)}</p>`
+    : "";
   const content = state.isLoadingModels
     ? `<div class="empty-state"><span class="spinner"></span><h2>Loading models</h2><p>Reading local model inventory…</p></div>`
     : state.modelError
@@ -176,6 +184,7 @@ function renderModelsPage(): string {
         <button class="button primary" id="import-model" ${state.isMutatingModel ? "disabled" : ""}>Import model</button>
       </div>
     </header>
+    ${mutationError}
     ${content}`;
 }
 
@@ -215,6 +224,7 @@ function renderModelDetails(modelId: string): string {
         <div><dt>Location</dt><dd>${escapeHtml(model.path ?? "Managed by LiteRT-LM")}</dd></div>
       </dl>
     </section>
+    ${state.mutationError ? `<p class="mutation-error" role="alert">${escapeHtml(state.mutationError)}</p>` : ""}
     <section class="danger-zone">
       <div><h2>Danger zone</h2><p>Deleting a model removes its local files and stops it from being available for new requests.</p></div>
       <button class="button danger-outline" id="delete-model-secondary" ${state.isMutatingModel ? "disabled" : ""}>Delete model</button>
@@ -293,7 +303,10 @@ async function refreshModels() {
 
 async function importModel() {
   if (window.llmdAndroid) {
+    state.isMutatingModel = true;
+    state.mutationError = null;
     addLog("Waiting for a model file to be selected.", "info");
+    render();
     window.llmdAndroid.importDefaultModel();
     return;
   }
@@ -302,14 +315,15 @@ async function importModel() {
   if (!model) return;
 
   state.isMutatingModel = true;
+  state.mutationError = null;
   render();
   try {
     await invoke("import_model", { model });
     addLog(`Imported model ${model}.`, "success");
     await refreshModels();
   } catch (error) {
-    state.modelError = `Unable to import ${model}: ${String(error)}`;
-    addLog(state.modelError, "error");
+    state.mutationError = `Unable to import ${model}: ${String(error)}`;
+    addLog(state.mutationError, "error");
   } finally {
     state.isMutatingModel = false;
     render();
@@ -321,6 +335,7 @@ async function deleteCurrentModel() {
   if (!model || !window.confirm(`Delete ${model}? This removes its local files.`)) return;
 
   state.isMutatingModel = true;
+  state.mutationError = null;
   render();
   try {
     if (window.llmdAndroid) {
@@ -332,8 +347,8 @@ async function deleteCurrentModel() {
     await refreshModels();
     window.location.hash = "#/models";
   } catch (error) {
-    state.modelError = `Unable to delete ${model}: ${String(error)}`;
-    addLog(state.modelError, "error");
+    state.mutationError = `Unable to delete ${model}: ${String(error)}`;
+    addLog(state.mutationError, "error");
   } finally {
     if (!window.llmdAndroid) {
       state.isMutatingModel = false;
