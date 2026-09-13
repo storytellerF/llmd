@@ -3,7 +3,6 @@ use litertlm_rs::*;
 use llmd_core::{ChatRequest, LlmdError, ResponseFormat};
 use serde_json::json;
 use std::{
-    collections::HashMap,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
@@ -11,18 +10,31 @@ use tokio::sync::mpsc::Sender;
 
 #[derive(Default)]
 pub struct EngineCache {
-    engines: Mutex<HashMap<PathBuf, Arc<Mutex<Engine>>>>,
+    engine: Mutex<Option<(PathBuf, Arc<Mutex<Engine>>)>>,
 }
 
 impl EngineCache {
     fn get(&self, path: &Path) -> Result<Arc<Mutex<Engine>>, LlmdError> {
-        let mut engines = self
-            .engines
+        let mut cached = self
+            .engine
             .lock()
             .map_err(|_| backend("Engine cache lock was poisoned"))?;
-        if let Some(engine) = engines.get(path) {
-            return Ok(engine.clone());
+        if let Some((cached_path, engine)) = cached.as_ref() {
+            if cached_path == path {
+                return Ok(engine.clone());
+            }
+            if Arc::strong_count(engine) > 1 {
+                return Err(backend(format!(
+                    "Cannot load model {} while model {} is still active",
+                    path.display(),
+                    cached_path.display()
+                )));
+            }
         }
+
+        // With no outstanding references, dropping the sole cached Arc closes
+        // the previous native engine before a replacement is constructed.
+        cached.take();
         let settings = EngineSettings::new(
             path.to_str().ok_or_else(|| backend("Invalid model path"))?,
             "cpu",
@@ -31,15 +43,21 @@ impl EngineCache {
         )
         .map_err(backend)?;
         let engine = Arc::new(Mutex::new(Engine::new(&settings).map_err(backend)?));
-        engines.insert(path.to_owned(), engine.clone());
+        *cached = Some((path.to_owned(), engine.clone()));
         Ok(engine)
     }
 
     pub fn invalidate(&self, path: &Path) -> Result<(), LlmdError> {
-        self.engines
+        let mut cached = self
+            .engine
             .lock()
-            .map_err(|_| backend("Engine cache lock was poisoned"))?
-            .remove(path);
+            .map_err(|_| backend("Engine cache lock was poisoned"))?;
+        if cached
+            .as_ref()
+            .is_some_and(|(cached_path, _)| cached_path == path)
+        {
+            cached.take();
+        }
         Ok(())
     }
 }
