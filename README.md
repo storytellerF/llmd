@@ -1,9 +1,7 @@
-<a id="llmd"></a>
 # llmd
 
 `llmd` 通过 OpenAI 兼容 API 提供本地 LiteRT-LM 模型服务。
 
-<a id="platform-strategy"></a>
 ## 平台策略
 
 - 桌面端：Tauri v2 应用，通过 `litertlm-rs` 绑定调用原生 LiteRT-LM C API。
@@ -12,7 +10,6 @@
 
 没有默认模型，也不会回退到其他模型。模型列表只包含已导入本地、非空的 `.litertlm` 文件。请求必须给出精确模型 ID（不含扩展名的文件名）；缺失或未知 ID 会失败，不会改选其他模型。
 
-<a id="workspace"></a>
 ## 工作区
 
 ```text
@@ -24,7 +21,6 @@ crates/llmd-server     OpenAI-compatible HTTP API
 docs                   Architecture and test notes
 ```
 
-<a id="cli"></a>
 ## CLI
 
 启动本地 API 服务器：
@@ -51,7 +47,6 @@ cargo run -p llmd -- chat --model <imported-model-id> "Hello"
 cargo run -p llmd -- tui
 ```
 
-<a id="http-api"></a>
 ## HTTP API
 
 ```bash
@@ -75,7 +70,6 @@ curl http://127.0.0.1:11435/v1/chat/completions \
 }
 ```
 
-<a id="desktop"></a>
 ## 桌面端
 
 ```bash
@@ -88,7 +82,6 @@ npm run tauri dev
 
 桌面构建需要 libclang；不在默认搜索路径时设置 `LIBCLANG_PATH`。固定版本的 `litertlm-rs`/`litertlm-sys` 0.16.3 会下载经过校验和验证的 LiteRT-LM 0.16.0 原生库，并复制到 Cargo 可执行文件旁。分发应用包时也须包含原生库；平台专用 Tauri 配置会为 Windows、Linux 和 Apple Silicon macOS 打包。Windows 要求 MSVC target；此绑定没有 Intel macOS 预构建包。Android 继续使用官方 Kotlin SDK。目前推理使用 CPU，`--pool-size` 限制并发请求数。
 
-<a id="android"></a>
 ## Android
 
 Android 使用 `app` 中共享的 Tauri UI。设备应用应提供与桌面和 CLI 相同的 OpenAI 兼容 API，由原生 `litertlm-android` 支持。
@@ -129,12 +122,11 @@ ANDROID_UDID=<device-serial> scripts/test-android-appium.sh --e2e
 
 Android 只通过获授权的 Binder IPC 接口向其他 Android 应用提供 LiteRT-LM，不监听设备 TCP 端口。见 `docs/android-tauri-ipc-api.md`。
 
-<a id="tests"></a>
 ## 测试
 
 生命周期管理、生成的 Android 打包、验证命令和真机限制见 [DEVELOPMENT.md](DEVELOPMENT.md)。
 
-工作区、CLI 和按需启用的真实模型 API 验证见[开发文档](DEVELOPMENT.md#cli-and-openai-api-integration-tests)。
+工作区、CLI 和按需启用的真实模型 API 验证见[开发文档](DEVELOPMENT.md#cli-与-openai-api-集成测试)。
 
 运行时与模型已安装时，手动运行真实 LiteRT-LM 冒烟测试：
 

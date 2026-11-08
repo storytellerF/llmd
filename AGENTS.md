@@ -1,7 +1,5 @@
-<a id="agentsmd"></a>
 # AGENTS.md
 
-<a id="static-checks"></a>
 ## 静态检查
 
 交付代码改动前，在仓库根目录运行相关静态检查：
@@ -42,7 +40,6 @@ git status --short --untracked-files=all
 
 只有确实需要纳入改动的具体生成文件，才使用 `git add -f <path>`。
 
-<a id="tests"></a>
 ## 测试
 
 服务器或 API 行为变化时，运行聚焦的 Rust 测试：

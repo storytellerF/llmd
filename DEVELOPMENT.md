@@ -1,4 +1,3 @@
-<a id="development"></a>
 # 开发
 
 工作区因 Ratatui 0.30 要求 Rust 1.88 或更新版本；Tauri 应用要求 Rust 1.90 或更新版本。更新 Tauri CLI 和 Rust crate 后，运行 `npm --prefix app run tauri -- android init --ci` 重新生成 Android，再运行 `scripts/sync-tauri-android-overrides.sh`。Tauri 2.12 生成 Gradle 9.6.1 / AGP 9.3.1 项目，目标为 Android API 37；Android 检查前先安装该 SDK 平台。维护中的 Android 库和 IPC 示例将 Java 与 Kotlin 编译到 JVM 17。在 `bundle.android.debugApplicationIdSuffix` 保留 debug 包名后缀，让 CLI 重写生成的 Gradle 文件时能保留它。更新 npm 依赖时，同步 `app/package-lock.json` 和 `app/pnpm-lock.yaml`。Dependabot 每周检查 GitHub Actions、`app` 的 npm、两个 Cargo 项目，以及 Android 库和 IPC 示例的 Gradle 依赖。版本更新按生态系统分组，包括主、次和补丁版本。生成的 Android 工具链版本仍由 Tauri 模板管理；Kotlin 覆盖配置在 `app/src-tauri/android/patches` 中维护。Android E2E 运行器的 Fantoccini action 类型必须与 `appium-client` 暴露的版本一致。0.2.2 要求 Fantoccini 0.19；在 Appium 客户端支持相应公开类型前，Dependabot 忽略 Fantoccini 0.20 及更新版本。兼容性限制与其 Dependabot 例外必须一起更新。
@@ -11,14 +10,12 @@ Android 源码归属 `app/src-tauri/android`。生成的 Tauri 工作区已忽�
 
 设备已连接时，在安装或测试前先取得设备侧测试锁。设备锁由调用方或 AI 插件在外部管理；测试入口可直接运行，不要求安装 agent 插件。运行 `scripts/test-android-appium.sh` 时明确设置 `GEMMA_MODEL_PATH`。`LLMD_ANDROID_E2E_SKIP_BUILD=1` 使用已安装的应用和示例 APK；`LLMD_ANDROID_E2E_IMPORT_ONLY=1` 检查导入、显式选择和服务就绪，不代表已覆盖 IPC 生成。会话强制启动选定应用，避免共存变体收到另一个变体的测试操作。运行器原地安装，不清除应用数据，也不允许版本降级。
 
-<a id="background-operation"></a>
 ## 后台运行
 
 用户可见的 Binder 客户端应使用 `BIND_AUTO_CREATE | BIND_IMPORTANT` 绑定，让推理共享前台调用方的进程重要性。此举不会加载模型，也不能阻止系统因内存不足回收引擎。示例展示绑定方式；显式前台模型服务在断开连接后继续负责模型。
 
 Android 13 及以上版本中，MainActivity 在分配所选引擎前请求通知权限。Activity 重建时保留待处理的显式模型 ID。Status UI 显示通知权限并可打开标准应用设置。部分厂商还要求允许后台运行，并在最近任务中保护或锁定 LLMD。这些系统选择与服务开关相互独立。
 
-<a id="verification"></a>
 ## 验证
 
 Test 工作流在 pull request、与任务相关的 main 推送和手动触发时运行。main 上的运行建立 Rust 依赖缓存，后续 pull request 可恢复。Linux host 检查同时缓存根工作区的 `target` 和 `app/src-tauri/target`；Windows 打包仅缓存后者。Android debug 验证和 release 打包以不同键缓存 `app/src-tauri/target`。其目标产物使用不同 profile，不能互换；每份缓存还包含 Cargo registry/git 下载。缓存键按平台和构建用途隔离。Rust 缓存 action 保留依赖，不保留工作区输出或增量编译状态。声称节省时间前，应比较冷、热运行，并计入缓存恢复与保存耗时及大小。
@@ -29,7 +26,6 @@ Test 工作流在 pull request、与任务相关的 main 推送和手动触发�
 
 项目 host/Android 静态检查、Tauri 打包与测试、Android 生命周期和清单单元测试，以及 Summer 构建、单元测试和 Lint 检查已通过。可选的完整 LLMD Android Lint 仍报告生成的 TV manifest 问题 `MissingTvBanner` 和 `ImpliedTouchscreenHardware`；改动代码未发现新的 Lint 错误。
 
-<a id="cli-and-openai-api-integration-tests"></a>
 ## CLI 与 OpenAI API 集成测试
 
 `cargo test --workspace --locked` 执行 `cli/tests/cli.rs` 中针对真实 CLI 二进制的集成测试。每个用例使用一个 supervisor，由其创建并独占管理 CLI 进程、空模型目录和日志。运行器持有回环控制连接，接收有类型的启动、CLI 退出和清理完成事件。测试作用域成功必须收到清理成功确认，并核实 supervisor 的退出状态。命令与就绪等待均限时 30 秒；HTTP 调用也设置连接和请求超时。服务器用例绑定回环端口零，再从启动日志读取分配的端口。
