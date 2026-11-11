@@ -68,17 +68,19 @@ function send(method, params = {}, sessionId) {
   });
 }
 
-const fixture = `
+function androidFixture(health = { serviceState: "off", notificationsEnabled: false }) {
+  return `
   const inventory = {models: ["theme-fixture"], modelPaths: {"theme-fixture": "/models/theme-fixture.litertlm"}};
   window.llmdAndroid = {
     getModelState: () => JSON.stringify(inventory),
-    getHealthState: () => JSON.stringify({serviceState: "off", notificationsEnabled: false}),
+    getHealthState: () => JSON.stringify(${JSON.stringify(health)}),
     importModel: () => window.dispatchEvent(new CustomEvent("llmd-models-changed", {
       detail: {...inventory, error: "Synthetic import error"}
     })),
     deleteModel() {}, setServiceEnabled() {}, openBackgroundSettings() {}
   };
 `;
+}
 
 // Inspect actual computed text colors against composited ancestor backgrounds.
 // Even large text is held to 4.5:1; disabled controls are exempt.
@@ -145,7 +147,7 @@ try {
       }};
       window.prompt = () => "/models/theme-fixture.litertlm";
     `;
-    const {identifier} = await call("Page.addScriptToEvaluateOnNewDocument", { source: host === "android" ? fixture : desktopFixture });
+    const {identifier} = await call("Page.addScriptToEvaluateOnNewDocument", { source: host === "android" ? androidFixture() : desktopFixture });
     for (const width of [1100, 390]) {
       await call("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: width < 720 });
       for (const initial of ["light", "dark"]) {
@@ -155,6 +157,10 @@ try {
           await ready();
           const heading = route === "status" ? "Service status" : route === "models" ? "Models" : route === "logs" ? "Logs" : "theme-fixture";
           assert.equal(await evaluate('document.querySelector("#app h1").textContent'), heading);
+          if (host === "android" && route === "status") {
+            assert.equal(await evaluate('document.querySelector("#service-enabled").disabled'), true);
+            assert.equal(await evaluate('document.querySelector("#service-enabled").checked'), false);
+          }
           await check(initial);
           // Both runtime directions without navigation or a UI rerender.
           const opposite = initial === "light" ? "dark" : "light";
@@ -211,6 +217,85 @@ try {
       }
     }
     await call("Page.removeScriptToEvaluateOnNewDocument", {identifier});
+  }
+
+  // Separate snapshots exercise the native switch without changing product state ownership.
+  for (const scenario of [
+    { name: "off-no-selection", health: { serviceState: "off" }, disabled: true, checked: false },
+    { name: "off-selected", health: { serviceState: "off", selectedModel: "theme-fixture" }, disabled: false, checked: false },
+    { name: "ready-selected", health: { serviceState: "ready", selectedModel: "theme-fixture" }, disabled: false, checked: true },
+  ]) {
+    const { identifier } = await call("Page.addScriptToEvaluateOnNewDocument", { source: androidFixture(scenario.health) });
+    for (const width of [1100, 390]) {
+      await call("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: width < 720 });
+      for (const initial of ["light", "dark"]) {
+        const context = `${scenario.name} ${width}px ${initial}`;
+        await call("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: initial }] });
+        await call("Page.navigate", { url: `http://127.0.0.1:${server.address().port}/?toggle=${context}#/status` });
+        await ready();
+        assert.equal(await evaluate('Boolean(document.querySelector("#service-enabled"))'), true, context);
+        assert.equal(await evaluate('document.querySelector("#service-enabled").disabled'), scenario.disabled, context);
+        assert.equal(await evaluate('document.querySelector("#service-enabled").checked'), scenario.checked, context);
+        assert.equal(await evaluate('document.querySelector("#service-model").value'), scenario.health.selectedModel ?? "", context);
+        if (scenario.disabled) {
+          await evaluate('document.querySelector("#service-enabled").focus()');
+          assert.equal(await evaluate('document.activeElement.id === "service-enabled"'), false, context);
+        } else {
+          // Tab from the preceding control, proving keyboard focus rather than only a styled outline.
+          await evaluate('document.querySelector("#check-health").focus()');
+          for (let tab = 0; tab < 3; tab++) {
+            await call("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
+            await call("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
+            if (await evaluate('document.activeElement.id === "service-enabled"')) break;
+          }
+          assert.equal(await evaluate('document.activeElement.id === "service-enabled"'), true, context);
+        }
+        const opposite = initial === "light" ? "dark" : "light";
+        for (const theme of [initial, opposite, initial]) {
+          await call("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: theme }] });
+          await check(theme);
+          const toggle = await evaluate(`(() => {
+            const element = document.querySelector("#service-enabled");
+            const style = getComputedStyle(element);
+            let background = "";
+            for (let node = element; node; node = node.parentElement) {
+              const color = getComputedStyle(node).backgroundColor;
+              if (color !== "rgba(0, 0, 0, 0)") { background = color; break; }
+            }
+            return {
+              disabled: element.disabled, checked: element.checked,
+              focused: document.activeElement === element, focusVisible: element.matches(":focus-visible"),
+              appearance: style.appearance, scheme: style.colorScheme, background,
+              outline: style.outlineStyle, outlineWidth: parseFloat(style.outlineWidth),
+              outlineColor: style.outlineColor,
+            };
+          })()`);
+          assert.equal(toggle.disabled, scenario.disabled, context);
+          assert.equal(toggle.checked, scenario.checked, context);
+          assert.equal(toggle.focused, !scenario.disabled, context);
+          assert.equal(toggle.appearance, "auto", context);
+          assert.equal(toggle.scheme, theme, context);
+          assert.equal(toggle.background, theme === "dark" ? "rgb(26, 34, 51)" : "rgb(255, 255, 255)", context);
+          if (!scenario.disabled) {
+            assert.equal(toggle.focusVisible, true, context);
+            assert.equal(toggle.outline, "solid", context);
+            assert.equal(toggle.outlineWidth, 3, context);
+            assert.equal(toggle.outlineColor, theme === "dark" ? "rgb(189, 181, 255)" : "rgb(89, 70, 203)", context);
+          }
+          if (process.env.THEME_SCREENSHOT_DIR && width === 1100) {
+            await mkdir(process.env.THEME_SCREENSHOT_DIR, { recursive: true });
+            const clip = await evaluate(`(() => {
+              const rect = document.querySelector(".service-controls").getBoundingClientRect();
+              return {x: rect.x + scrollX, y: rect.y + scrollY, width: rect.width, height: rect.height, scale: 1};
+            })()`);
+            const { data } = await call("Page.captureScreenshot", { format: "png", clip, captureBeyondViewport: true });
+            await writeFile(join(process.env.THEME_SCREENSHOT_DIR, `toggle-${scenario.name}-${theme}.png`), Buffer.from(data, "base64"));
+          }
+        }
+        console.log(`PASS checkbox ${context}: disabled=${scenario.disabled}, checked=${scenario.checked}, keyboard-focus=${!scenario.disabled}, ${scenario.disabled ? "remained unfocused" : "retained focus"} through ${initial}→${opposite}→${initial}, native appearance, background, contrast`);
+      }
+    }
+    await call("Page.removeScriptToEvaluateOnNewDocument", { identifier });
   }
 } finally {
   if (browser.exitCode === null) {
